@@ -80,10 +80,10 @@ fun LoginScreen(
         ) {
             // LOGO
             Image(
-                painter = painterResource(id = R.drawable.imageplaceholderjpg),
+                painter = painterResource(id = R.drawable.logomipadelsinfondo),
                 contentDescription = "Logo MiPádel",
                 modifier = Modifier
-                    .size(160.dp)
+                    .size(320.dp)
                     .padding(bottom = 16.dp)
             )
 
