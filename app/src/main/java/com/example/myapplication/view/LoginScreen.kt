@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +26,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +64,7 @@ fun LoginScreen(
     var keepLoggedIn by remember { mutableStateOf(true) }
     val viewModel: LoginViewModel = viewModel()
     val authState by viewModel.authState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
 
     val colors = MaterialTheme.colorScheme
@@ -70,6 +75,45 @@ fun LoginScreen(
             .background(colors.background) // Se adapta al modo claro/oscuro
             .padding(24.dp)
     ) {
+
+        LaunchedEffect(authState) {
+            when (authState) {
+                is AuthState.Error -> {
+                    snackbarHostState.showSnackbar(
+                        message = (authState as AuthState.Error).message,
+                        withDismissAction = true
+                    )
+                }
+
+                is AuthState.Success -> {
+                    //Muestra el snackbar
+                    snackbarHostState.showSnackbar("Inicio de sesión exitoso")
+                    //Navega a Home
+                    onLoginClick()
+                }
+
+                else -> Unit
+            }
+        }
+        //Overlay de carga
+        if (authState is AuthState.Loading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .zIndex(2f), //lo pone encima de todo
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
+        // SnackbarHost — donde aparecerán los mensajes
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter) // posición inferior
+                .padding(bottom = 16.dp)
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -78,13 +122,14 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // LOGO
+            //Logo
             Image(
-                painter = painterResource(id = R.drawable.logomipadelsinfondo),
+                painter = painterResource(id = R.drawable.logomipadel),
                 contentDescription = "Logo MiPádel",
                 modifier = Modifier
                     .size(320.dp)
                     .padding(bottom = 16.dp)
+                    .clip(CircleShape)
             )
 
             Text(
@@ -96,13 +141,13 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Usuario
+            //textfieldUsuario
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Usuario", color = colors.onSurface.copy(alpha = 0.7f)) },
                 singleLine = true,
-                shape = RoundedCornerShape(50),
+                shape = RoundedCornerShape(25.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = colors.surface,
                     unfocusedContainerColor = colors.surface,
@@ -110,9 +155,7 @@ fun LoginScreen(
                     unfocusedBorderColor = Color.Transparent,
                     cursorColor = colors.primary
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -125,7 +168,7 @@ fun LoginScreen(
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = RoundedCornerShape(50),
+                shape = RoundedCornerShape(25.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = colors.surface,
                     unfocusedContainerColor = colors.surface,
@@ -133,9 +176,7 @@ fun LoginScreen(
                     unfocusedBorderColor = Color.Transparent,
                     cursorColor = colors.primary
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -189,39 +230,6 @@ fun LoginScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.clickable { onRegisterClick() }
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            //Mostrar estado de autenticación
-            when (authState) {
-                is AuthState.Loading -> {
-                    // Círculo de carga sobre toda la pantalla
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f))
-                            .zIndex(1f), //fuerza a estar encima de todo
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color.White)
-                    }
-                }
-
-                is AuthState.Success -> {
-                    LaunchedEffect(Unit) { onLoginClick() }
-                }
-
-                is AuthState.Error -> {
-                    Text(
-                        textAlign = TextAlign.Center,
-                        fontSize = 20.sp,
-                        text = (authState as AuthState.Error).message,
-                        color = colors.error
-                    )
-                }
-
-                else -> Unit
-            }
         }
     }
 }

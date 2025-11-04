@@ -1,5 +1,6 @@
 package com.example.myapplication.model
 
+
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
