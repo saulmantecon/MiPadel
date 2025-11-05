@@ -86,10 +86,10 @@ fun LoginScreen(
                 }
 
                 is AuthState.Success -> {
+                    onLoginClick()
                     //Muestra el snackbar
                     snackbarHostState.showSnackbar("Inicio de sesión exitoso")
                     //Navega a Home
-                    onLoginClick()
                 }
 
                 else -> Unit
