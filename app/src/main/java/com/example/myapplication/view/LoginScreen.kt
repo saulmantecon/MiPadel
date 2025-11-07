@@ -63,7 +63,18 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var keepLoggedIn by remember { mutableStateOf(true) }
     val viewModel: LoginViewModel = viewModel()
+    /*
     val authState by viewModel.authState.collectAsState()
+    1. Suscribe la pantalla al flujo authState del ViewModel.
+    2. Convierte el StateFlow en un State de Compose (para que se pueda usar en when, Text(), etc.).
+    3.Redibuja automáticamente la UI cada vez que el estado cambia.
+     */
+    val authState by viewModel.authState.collectAsState()
+
+    /*
+     remember guarda el objeto entre recomposiciones.
+     by desempaqueta automáticamente el valor de un State observable.
+     */
     val snackbarHostState = remember { SnackbarHostState() }
 
 
@@ -75,7 +86,7 @@ fun LoginScreen(
             .background(colors.background) // Se adapta al modo claro/oscuro
             .padding(24.dp)
     ) {
-
+        //Se ejecuta SOLO cuando cambia la key authState
         LaunchedEffect(authState) {
             when (authState) {
                 is AuthState.Error -> {

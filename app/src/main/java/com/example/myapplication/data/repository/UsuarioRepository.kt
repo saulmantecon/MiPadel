@@ -5,7 +5,6 @@ import com.example.myapplication.data.FirebaseAuthManager.auth
 import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.Usuario
 import com.google.firebase.Timestamp
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.tasks.await
@@ -26,7 +25,7 @@ object UsuarioRepository {
     suspend fun registrarUsuario(nombre: String, email: String, password: String): Result<Unit> {
         return try {
             // 1️. Crear usuario en Auth (email único)
-            val authResult = FirebaseAuthManager.auth.createUserWithEmailAndPassword(email.trim(),password).await()
+            val authResult = auth.createUserWithEmailAndPassword(email.trim(),password).await()
 
             val uid = authResult.user?.uid
                 ?: return Result.failure(IllegalStateException("No se pudo obtener UID"))
@@ -41,7 +40,7 @@ object UsuarioRepository {
                 partidosJugados = 0,
                 partidosGanados = 0,
                 partidosPerdidos = 0,
-                fechaRegistro = com.google.firebase.Timestamp.now()
+                fechaRegistro = Timestamp.now()
             )
 
             usuariosCollection.document(uid).set(usuario).await()
@@ -54,20 +53,43 @@ object UsuarioRepository {
         } catch (e: Exception) {
             // rollback si Auth se creó pero Firestore falló
             try {
-                FirebaseAuthManager.auth.currentUser?.delete()?.await()
+                auth.currentUser?.delete()?.await()
             } catch (_: Exception) { }
             Result.failure(e)
         }
     }
 
+    suspend fun loginUsuario(email: String, password: String): Result<Usuario> {
+        return try {
+            // 1️. Autenticamos con FirebaseAuth
+            val authResult = auth
+                .signInWithEmailAndPassword(email.trim(), password)
+                .await()
+
+            val uid = authResult.user?.uid
+                ?: return Result.failure(IllegalStateException("UID no encontrado"))
+
+            //retorna directamente Result<Usuario>
+            obtenerUsuario(uid)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     /**
      * Obtener un usuario por su UID.
      */
-    suspend fun obtenerUsuario(uid: String): Usuario? {
-        val snapshot = usuariosCollection.document(uid).get().await()
-        return snapshot.toObject<Usuario>()
+    suspend fun obtenerUsuario(uid: String): Result<Usuario> {
+        return try {
+            val snapshot = usuariosCollection.document(uid).get().await()
+            val usuario = snapshot.toObject(Usuario::class.java) ?: return Result.failure(IllegalStateException("Usuario no encontrado"))
+            Result.success(usuario)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
+
 
     /**
      * Eliminar un usuario por su UID.

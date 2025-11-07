@@ -3,13 +3,11 @@ package com.example.myapplication.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.data.FirebaseAuthManager
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class RegisterViewModel : ViewModel() {
 
