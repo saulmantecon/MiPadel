@@ -6,5 +6,5 @@ import com.google.firebase.firestore.firestore
 
 
 object FirebaseFirestoreManager {
-    val db: FirebaseFirestore by lazy {Firebase.firestore}
+    val db: FirebaseFirestore by lazy { Firebase.firestore}
 }

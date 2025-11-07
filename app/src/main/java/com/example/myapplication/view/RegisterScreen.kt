@@ -19,11 +19,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,7 +44,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.R
+import com.example.myapplication.model.AuthState
+import com.example.myapplication.viewmodel.RegisterViewModel
 
 
 @Composable
@@ -50,6 +59,9 @@ fun RegisterScreen(
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    val viewModel: RegisterViewModel = viewModel()
+    val authState by viewModel.authState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val colors = MaterialTheme.colorScheme
 
@@ -59,6 +71,47 @@ fun RegisterScreen(
             .background(colors.background)
             .padding(24.dp)
     ) {
+        LaunchedEffect(authState) {
+            when (authState) {
+                is AuthState.Error -> {
+                    snackbarHostState.showSnackbar(
+                        message = (authState as AuthState.Error).message,
+                        withDismissAction = true
+                    )
+                }
+
+                is AuthState.Success -> {
+                    onRegisterClick()
+                    //Muestra el snackbar
+                    snackbarHostState.showSnackbar(
+                        message = (authState as AuthState.Success).message,
+                        withDismissAction = true
+                    )
+                    //Navega a Home
+                }
+
+                else -> Unit
+            }
+        }
+        //Overlay de carga
+        if (authState is AuthState.Loading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .zIndex(2f), //lo pone encima de todo
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        }
+        // SnackbarHost — donde aparecerán los mensajes
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter) // posición inferior
+                .padding(bottom = 16.dp)
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -150,7 +203,7 @@ fun RegisterScreen(
 
             // BOTÓN REGISTRARSE
             Button(
-                onClick = onRegisterClick,
+                onClick = { viewModel.registerUser(nombre, correo, password) },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier

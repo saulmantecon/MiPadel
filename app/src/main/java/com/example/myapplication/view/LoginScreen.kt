@@ -88,7 +88,10 @@ fun LoginScreen(
                 is AuthState.Success -> {
                     onLoginClick()
                     //Muestra el snackbar
-                    snackbarHostState.showSnackbar("Inicio de sesión exitoso")
+                    snackbarHostState.showSnackbar(
+                        message = (authState as AuthState.Success).message,
+                        withDismissAction = true
+                    )
                     //Navega a Home
                 }
 
