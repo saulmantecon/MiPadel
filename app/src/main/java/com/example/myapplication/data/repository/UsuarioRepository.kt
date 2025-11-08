@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.CurrentUserManager
 import com.example.myapplication.data.FirebaseAuthManager
 import com.example.myapplication.data.FirebaseAuthManager.auth
 import com.example.myapplication.data.FirebaseFirestoreManager
@@ -22,7 +23,7 @@ object UsuarioRepository {
      * 2) Crea doc de perfil en Firestore con create() (no sobreescribe).
      * 3) Si falla Firestore, hace rollback borrando la cuenta Auth recién creada.
      */
-    suspend fun registrarUsuario(nombre: String, email: String, password: String): Result<Unit> {
+    suspend fun registrarUsuario(nombre: String, email: String, password: String): Result<Usuario> {
         return try {
             // 1️. Crear usuario en Auth (email único)
             val authResult = auth.createUserWithEmailAndPassword(email.trim(),password).await()
@@ -45,7 +46,7 @@ object UsuarioRepository {
 
             usuariosCollection.document(uid).set(usuario).await()
 
-            Result.success(Unit)
+            Result.success(usuario)
 
         } catch (e: FirebaseAuthUserCollisionException) {
             Result.failure(IllegalArgumentException("Ese correo ya está registrado"))
@@ -76,6 +77,41 @@ object UsuarioRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun updateUsuario(usuario: Usuario) {
+        try {
+            // Obtenemos el usuario actual guardado en memoria
+            val usuarioActual = CurrentUserManager.getUsuario()
+                ?: throw IllegalStateException("No hay usuario cargado en memoria")
+
+            val docRef = usuariosCollection.document(usuario.uid)
+
+            // Comparamos solo con el usuario actual en memoria
+            val camposModificados = mutableMapOf<String, Any>()
+
+            if (usuarioActual.username != usuario.username) camposModificados["username"] = usuario.username
+            if (usuarioActual.nombre != usuario.nombre) camposModificados["nombre"] = usuario.nombre
+            if (usuarioActual.nivel != usuario.nivel) camposModificados["nivel"] = usuario.nivel
+            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl) camposModificados["fotoPerfilUrl"] =
+                usuario.fotoPerfilUrl as Any
+            if (usuarioActual.amigos != usuario.amigos) camposModificados["amigos"] = usuario.amigos
+            if (usuarioActual.partidosJugados != usuario.partidosJugados) camposModificados["partidosJugados"] = usuario.partidosJugados
+            if (usuarioActual.partidosGanados != usuario.partidosGanados) camposModificados["partidosGanados"] = usuario.partidosGanados
+            if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) camposModificados["partidosPerdidos"] = usuario.partidosPerdidos
+
+            if (camposModificados.isEmpty()) return // no hay nada que actualizar
+
+            // Actualiza solo los campos modificados
+            docRef.update(camposModificados).await()
+
+            // Actualiza también el usuario en memoria
+            CurrentUserManager.setUsuario(usuario)
+
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
 
     /**
      * Obtener un usuario por su UID.

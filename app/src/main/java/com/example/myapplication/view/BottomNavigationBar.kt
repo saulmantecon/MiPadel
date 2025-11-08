@@ -1,17 +1,23 @@
 package com.example.myapplication.view
 
 
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavController
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.myapplication.R
 
 data class BottomNavItem(val route: String, val label: String, val icon: Int)
-
 @Composable
-fun BottomNavigationBar(navController: NavController) {
+fun BottomNavigationBar(navController: NavHostController) {
     val items = listOf(
         BottomNavItem("home", "Home", R.drawable.ic_home_padel),
         BottomNavItem("community", "Community", R.drawable.ic_group),
@@ -30,26 +36,33 @@ fun BottomNavigationBar(navController: NavController) {
             NavigationBarItem(
                 selected = currentRoute == item.route,
                 onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true // evita duplicados
+                        }
                     }
                 },
                 icon = {
                     Icon(
+                        modifier = Modifier.size(24.dp),
                         painter = painterResource(id = item.icon),
                         contentDescription = item.label,
-                        tint = if (currentRoute == item.route) colors.primary else colors.onSurface
+                        tint = if (currentRoute == item.route)
+                            colors.primary
+                        else
+                            colors.onSurface.copy(alpha = 0.7f)
                     )
                 },
-                label = { Text(item.label, color = colors.onSurface) },
-                colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = colors.primary.copy(alpha = 0.15f),
-                    selectedIconColor = colors.primary,
-                    selectedTextColor = colors.primary,
-                    unselectedIconColor = colors.onSurface.copy(alpha = 0.7f),
-                    unselectedTextColor = colors.onSurface.copy(alpha = 0.7f)
-                )
+                label = {
+                    Text(
+                        item.label,
+                        color = if (currentRoute == item.route)
+                            colors.primary
+                        else
+                            colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
             )
         }
     }

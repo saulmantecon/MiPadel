@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.myapplication.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.myapplication.view.HomeScreen
 import com.example.myapplication.view.LoginScreen
+import com.example.myapplication.view.ProfileScreen
 import com.example.myapplication.view.RegisterScreen
 
 @Composable
@@ -14,7 +15,7 @@ fun NavigationWrapper(navHostController: NavHostController, modifier: Modifier) 
     NavHost(navController = navHostController, startDestination = "login", modifier = modifier){
         composable("login"){
             LoginScreen( onLoginClick = {
-                navHostController.navigate("home")},
+                navHostController.navigate("profile")},
                 onRegisterClick = {
                     navHostController.navigate("register")
                 }
@@ -35,6 +36,8 @@ fun NavigationWrapper(navHostController: NavHostController, modifier: Modifier) 
         }
         composable("community") {  }
 
-        composable("profile") {  }
+        composable("profile") {
+            ProfileScreen(navHostController)
+        }
     }
 }

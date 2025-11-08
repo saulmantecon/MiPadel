@@ -2,6 +2,7 @@ package com.example.myapplication.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.CurrentUserManager
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,10 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             val result = UsuarioRepository.loginUsuario(email, password)
 
-            result.fold(onSuccess = { usuario ->
+            result.fold(
+                onSuccess = { usuario ->
+                //guardamos el usuario en el UserManager para poder utilizar sus datos en toda la app.
+                CurrentUserManager.setUsuario(usuario)
                 _authState.value = AuthState.Success("Bienvenido, ${usuario.nombre}")
                 // Aquí podrías guardar el usuario actual si quieres (por ejemplo, en DataStore)
             }, onFailure = { e ->

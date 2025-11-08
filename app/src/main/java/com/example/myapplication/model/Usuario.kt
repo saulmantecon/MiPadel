@@ -4,6 +4,7 @@ data class Usuario(
     val uid: String = "",
     val nombre: String = "",
     val email: String = "",
+    val username: String = "",
     val nivel: Int = 0,
     val amigos: List<String> = emptyList(),
     val fotoPerfilUrl: String? = null,

@@ -13,6 +13,8 @@ services = "4.4.4"
 crashlytics = "3.0.6"
 navigationCompose = "2.9.5"
 runtime = "1.9.4"
+coil = "2.7.0"
+navigationRuntimeKtx = "2.9.6"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -36,6 +38,8 @@ firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
 androidx-navigation-compose = {module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose"}
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+coil = {module = "io.coil-kt:coil-compose", version.ref= "coil"}
+androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
 
 
 [plugins]

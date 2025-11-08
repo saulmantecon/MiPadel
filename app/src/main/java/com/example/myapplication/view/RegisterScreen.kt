@@ -57,6 +57,7 @@ fun RegisterScreen(
     onLoginClick: () -> Unit = {}
 ) {
     var nombre by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val viewModel: RegisterViewModel = viewModel()
@@ -137,8 +138,26 @@ fun RegisterScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // USERNAME
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Nombre de usuario", color = colors.onSurface.copy(alpha = 0.7f)) },
+                singleLine = true,
+                shape = RoundedCornerShape(25.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = colors.surface,
+                    unfocusedContainerColor = colors.surface,
+                    focusedBorderColor = colors.primary,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = colors.primary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // NOMBRE
             OutlinedTextField(
@@ -157,7 +176,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // CORREO
             OutlinedTextField(
@@ -176,7 +195,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // CONTRASEÑA
             OutlinedTextField(
@@ -186,7 +205,7 @@ fun RegisterScreen(
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = RoundedCornerShape(50),
+                shape = RoundedCornerShape(25.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = colors.surface,
                     unfocusedContainerColor = colors.surface,
@@ -194,16 +213,14 @@ fun RegisterScreen(
                     unfocusedBorderColor = Color.Transparent,
                     cursorColor = colors.primary
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // BOTÓN REGISTRARSE
             Button(
-                onClick = { viewModel.registerUser(nombre, correo, password) },
+                onClick = { viewModel.registerUser(username,nombre, correo, password) },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                 shape = RoundedCornerShape(50),
                 modifier = Modifier

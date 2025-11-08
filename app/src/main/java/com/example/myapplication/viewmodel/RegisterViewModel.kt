@@ -3,6 +3,7 @@ package com.example.myapplication.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.CurrentUserManager
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.AuthState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,7 @@ class RegisterViewModel : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun registerUser(nombre: String, email: String, password: String) {
+    fun registerUser(username:String, nombre: String, email: String, password: String) {
         if (nombre.isBlank() || email.isBlank() || password.isBlank()) {
             _authState.value = AuthState.Error("Por favor, completa todos los campos")
             return
@@ -28,7 +29,8 @@ class RegisterViewModel : ViewModel() {
             val resultado = UsuarioRepository.registrarUsuario(nombre, email, password)
 
             resultado.fold(
-                onSuccess = {
+                onSuccess = { usuario ->
+                    CurrentUserManager.setUsuario(usuario)
                     _authState.value = AuthState.Success("Registro exitoso")
                 },
                 onFailure = { e ->
