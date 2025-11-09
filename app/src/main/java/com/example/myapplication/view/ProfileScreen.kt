@@ -44,7 +44,7 @@ fun ProfileScreen(
     val colors = MaterialTheme.colorScheme
     val usuario by viewModel.usuario.collectAsState() // Observa cambios en tiempo real
     var editMode by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+    var hasEdited by remember { mutableStateOf(false) }
 
     var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
     var username by remember { mutableStateOf(usuario?.username ?: "") }
@@ -53,7 +53,10 @@ fun ProfileScreen(
     MainScaffold(
         navController = navController,
         isEditing = editMode,
-        onEditClick = { editMode = !editMode }) { padding, snackbarHostState ->
+        onEditClick = {
+            if (editMode) hasEdited = true
+            editMode = !editMode
+        }) { padding, snackbarHostState ->
 
         if (usuario == null) {
             Box(
@@ -77,7 +80,7 @@ fun ProfileScreen(
 
             // Cuando editMode se vuelve false (acabas de guardar), se actualiza el usuario
             LaunchedEffect(editMode) {
-                if (!editMode) {
+                if (!editMode && hasEdited) {
                     usuario?.let {
                         val actualizado = it.copy(
                             nombre = nombre.trim(),
@@ -86,6 +89,7 @@ fun ProfileScreen(
                         val message = viewModel.updateUsuario(actualizado)
                         snackbarHostState.showSnackbar(message)
                     }
+                    hasEdited = false // reseteamos para siguientes usos
                 }
             }
 
