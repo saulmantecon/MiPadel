@@ -19,19 +19,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.myapplication.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -42,8 +44,16 @@ fun ProfileScreen(
     val colors = MaterialTheme.colorScheme
     val usuario by viewModel.usuario.collectAsState() // Observa cambios en tiempo real
     var editMode by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
-    MainScaffold(navController = navController) { padding ->
+    var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
+    var username by remember { mutableStateOf(usuario?.username ?: "") }
+
+
+    MainScaffold(
+        navController = navController,
+        isEditing = editMode,
+        onEditClick = { editMode = !editMode }) { padding, snackbarHostState ->
 
         if (usuario == null) {
             Box(
@@ -57,9 +67,6 @@ fun ProfileScreen(
             return@MainScaffold
         }
 
-        var nombre by remember(usuario) { mutableStateOf(usuario!!.nombre) }
-        var nivel by remember(usuario) { mutableStateOf(usuario!!.nivel.toString()) }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -68,31 +75,17 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // CABECERA
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Perfil de usuario",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                IconButton(onClick = {
-                    if (editMode) {
-                        val actualizado = usuario!!.copy(
-                            nombre = nombre,
-                            nivel = nivel.toIntOrNull() ?: usuario!!.nivel
+            // Cuando editMode se vuelve false (acabas de guardar), se actualiza el usuario
+            LaunchedEffect(editMode) {
+                if (!editMode) {
+                    usuario?.let {
+                        val actualizado = it.copy(
+                            nombre = nombre.trim(),
+                            username = username.trim()
                         )
-                        viewModel.updateUsuario(actualizado)
+                        val message = viewModel.updateUsuario(actualizado)
+                        snackbarHostState.showSnackbar(message)
                     }
-                    editMode = !editMode
-                }) {
-                    Icon(
-                        imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
-                        contentDescription = if (editMode) "Guardar" else "Editar"
-                    )
                 }
             }
 
@@ -108,22 +101,11 @@ fun ProfileScreen(
             )
 
             OutlinedTextField(
-                value = usuario!!.email,
-                onValueChange = {},
-                label = { Text("Correo electrónico") },
-                enabled = false,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50)
-            )
-
-            OutlinedTextField(
-                value = nivel,
-                onValueChange = { nivel = it },
-                label = { Text("Nivel") },
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Nombre de usuario") },
                 enabled = editMode,
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(50)
             )

@@ -12,9 +12,11 @@ import com.example.myapplication.navigation.Screen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScaffold(
+    isEditing: Boolean = false,
+    onEditClick: () -> Unit = {},
     navController: NavHostController,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    content: @Composable (PaddingValues) -> Unit
+    content: @Composable (PaddingValues, SnackbarHostState) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -44,10 +46,13 @@ fun MainScaffold(
                 showBack = currentScreen.showBack,
                 showAdd = currentScreen.showAdd,
                 showSearch = currentScreen.showSearch,
+                showEdit = currentScreen.showEdit,
                 onMenuClick = { /* abrir menú lateral */ },
                 onAddClick = { /* abrir modal nuevo amigo */ },
-                onSearchClick = { /* buscar usuario */ }
-            )
+                onSearchClick = { /* buscar usuario */ },
+                onEditClick = onEditClick,
+                isEditing = isEditing,
+                )
         },
 
         bottomBar = {
@@ -66,6 +71,6 @@ fun MainScaffold(
             }
         }
     ) { padding ->
-        content(padding)
+        content(padding, snackbarHostState)
     }
 }

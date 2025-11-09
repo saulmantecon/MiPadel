@@ -1,7 +1,6 @@
 package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.CurrentUserManager
-import com.example.myapplication.data.FirebaseAuthManager
 import com.example.myapplication.data.FirebaseAuthManager.auth
 import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.Usuario
@@ -23,7 +22,7 @@ object UsuarioRepository {
      * 2) Crea doc de perfil en Firestore con create() (no sobreescribe).
      * 3) Si falla Firestore, hace rollback borrando la cuenta Auth recién creada.
      */
-    suspend fun registrarUsuario(nombre: String, email: String, password: String): Result<Usuario> {
+    suspend fun registrarUsuario(username:String,nombre: String, email: String, password: String): Result<Usuario> {
         return try {
             // 1️. Crear usuario en Auth (email único)
             val authResult = auth.createUserWithEmailAndPassword(email.trim(),password).await()
@@ -36,6 +35,7 @@ object UsuarioRepository {
                 uid = uid,
                 nombre = nombre.trim(),
                 email = email.trim().lowercase(),
+                username = username.trim(),
                 nivel = 1,
                 amigos = emptyList(),
                 partidosJugados = 0,
@@ -48,7 +48,7 @@ object UsuarioRepository {
 
             Result.success(usuario)
 
-        } catch (e: FirebaseAuthUserCollisionException) {
+        } catch (_: FirebaseAuthUserCollisionException) {
             Result.failure(IllegalArgumentException("Ese correo ya está registrado"))
 
         } catch (e: Exception) {
@@ -78,39 +78,43 @@ object UsuarioRepository {
         }
     }
 
-    suspend fun updateUsuario(usuario: Usuario) {
-        try {
-            // Obtenemos el usuario actual guardado en memoria
+    suspend fun updateUsuario(usuario: Usuario): Result<Unit> {
+        return try {
+            // Obtenemos el usuario actual en memoria
             val usuarioActual = CurrentUserManager.getUsuario()
-                ?: throw IllegalStateException("No hay usuario cargado en memoria")
+                ?: return Result.failure(IllegalStateException("No hay usuario cargado en memoria"))
 
             val docRef = usuariosCollection.document(usuario.uid)
 
-            // Comparamos solo con el usuario actual en memoria
+            // Detectamos los campos modificados
             val camposModificados = mutableMapOf<String, Any>()
 
             if (usuarioActual.username != usuario.username) camposModificados["username"] = usuario.username
             if (usuarioActual.nombre != usuario.nombre) camposModificados["nombre"] = usuario.nombre
             if (usuarioActual.nivel != usuario.nivel) camposModificados["nivel"] = usuario.nivel
-            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl) camposModificados["fotoPerfilUrl"] =
-                usuario.fotoPerfilUrl as Any
+            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl && usuario.fotoPerfilUrl != null) camposModificados["fotoPerfilUrl"] = usuario.fotoPerfilUrl
             if (usuarioActual.amigos != usuario.amigos) camposModificados["amigos"] = usuario.amigos
             if (usuarioActual.partidosJugados != usuario.partidosJugados) camposModificados["partidosJugados"] = usuario.partidosJugados
             if (usuarioActual.partidosGanados != usuario.partidosGanados) camposModificados["partidosGanados"] = usuario.partidosGanados
             if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) camposModificados["partidosPerdidos"] = usuario.partidosPerdidos
 
-            if (camposModificados.isEmpty()) return // no hay nada que actualizar
+            // Si no hay cambios, devolvemos Result.success sin tocar Firestore
+            if (camposModificados.isEmpty()) {
+                return Result.success(Unit)
+            }
 
-            // Actualiza solo los campos modificados
+            // Actualizamos solo los campos modificados en Firestore
             docRef.update(camposModificados).await()
 
-            // Actualiza también el usuario en memoria
+            // Actualizamos el usuario en memoria
             CurrentUserManager.setUsuario(usuario)
 
+            Result.success(Unit)
         } catch (e: Exception) {
-            throw e
+            Result.failure(e)
         }
     }
+
 
 
     /**

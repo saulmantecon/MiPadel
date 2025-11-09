@@ -7,7 +7,8 @@ sealed class Screen(
     val showBack: Boolean = false,
     val showAdd: Boolean = false,
     val showSearch: Boolean = false,
-    val showFab: Boolean = false
+    val showFab: Boolean = false,
+    val showEdit: Boolean = false
 ) {
     object Home : Screen(
         route = "home",
@@ -27,6 +28,7 @@ sealed class Screen(
     object Profile : Screen(
         route = "profile",
         title = "Perfil",
-        showMenu = true
+        showMenu = true,
+        showEdit = true
     )
 }

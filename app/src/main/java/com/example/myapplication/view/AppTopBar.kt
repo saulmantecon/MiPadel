@@ -3,6 +3,8 @@ package com.example.myapplication.view
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -17,10 +19,13 @@ fun AppTopBar(
     showMenu: Boolean = false,
     showAdd: Boolean = false,
     showSearch: Boolean = false,
+    showEdit: Boolean = false,
+    isEditing: Boolean = false,
     onBackClick: () -> Unit = {},
     onMenuClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    onEditClick: () -> Unit = {}
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -72,6 +77,15 @@ fun AppTopBar(
                         imageVector = Icons.Filled.Search,
                         contentDescription = "Buscar",
                         tint = colors.onSurface
+                    )
+                }
+            }
+            if (showEdit) {
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = if (isEditing) Icons.Default.Done else Icons.Default.Edit,
+                        contentDescription = if (isEditing) "Guardar" else "Editar",
+                        tint = if (isEditing) colors.inverseSurface else colors.onSurface // cambia color según modo
                     )
                 }
             }

@@ -26,7 +26,7 @@ class RegisterViewModel : ViewModel() {
 
         // Llamamos al repositorio dentro de una corrutina
         viewModelScope.launch {
-            val resultado = UsuarioRepository.registrarUsuario(nombre, email, password)
+            val resultado = UsuarioRepository.registrarUsuario(username,nombre, email, password)
 
             resultado.fold(
                 onSuccess = { usuario ->
