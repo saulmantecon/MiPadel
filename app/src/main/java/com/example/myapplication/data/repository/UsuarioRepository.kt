@@ -6,7 +6,6 @@ import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.Usuario
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.tasks.await
 
 
@@ -22,10 +21,15 @@ object UsuarioRepository {
      * 2) Crea doc de perfil en Firestore con create() (no sobreescribe).
      * 3) Si falla Firestore, hace rollback borrando la cuenta Auth recién creada.
      */
-    suspend fun registrarUsuario(username:String,nombre: String, email: String, password: String): Result<Usuario> {
+    suspend fun registrarUsuario(
+        username: String,
+        nombre: String,
+        email: String,
+        password: String
+    ): Result<Usuario> {
         return try {
             // 1️. Crear usuario en Auth (email único)
-            val authResult = auth.createUserWithEmailAndPassword(email.trim(),password).await()
+            val authResult = auth.createUserWithEmailAndPassword(email.trim(), password).await()
 
             val uid = authResult.user?.uid
                 ?: return Result.failure(IllegalStateException("No se pudo obtener UID"))
@@ -55,7 +59,8 @@ object UsuarioRepository {
             // rollback si Auth se creó pero Firestore falló
             try {
                 auth.currentUser?.delete()?.await()
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
             Result.failure(e)
         }
     }
@@ -89,14 +94,19 @@ object UsuarioRepository {
             // Detectamos los campos modificados
             val camposModificados = mutableMapOf<String, Any>()
 
-            if (usuarioActual.username != usuario.username) camposModificados["username"] = usuario.username
+            if (usuarioActual.username != usuario.username) camposModificados["username"] =
+                usuario.username
             if (usuarioActual.nombre != usuario.nombre) camposModificados["nombre"] = usuario.nombre
             if (usuarioActual.nivel != usuario.nivel) camposModificados["nivel"] = usuario.nivel
-            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl && usuario.fotoPerfilUrl != null) camposModificados["fotoPerfilUrl"] = usuario.fotoPerfilUrl
+            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl && usuario.fotoPerfilUrl != null) camposModificados["fotoPerfilUrl"] =
+                usuario.fotoPerfilUrl
             if (usuarioActual.amigos != usuario.amigos) camposModificados["amigos"] = usuario.amigos
-            if (usuarioActual.partidosJugados != usuario.partidosJugados) camposModificados["partidosJugados"] = usuario.partidosJugados
-            if (usuarioActual.partidosGanados != usuario.partidosGanados) camposModificados["partidosGanados"] = usuario.partidosGanados
-            if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) camposModificados["partidosPerdidos"] = usuario.partidosPerdidos
+            if (usuarioActual.partidosJugados != usuario.partidosJugados) camposModificados["partidosJugados"] =
+                usuario.partidosJugados
+            if (usuarioActual.partidosGanados != usuario.partidosGanados) camposModificados["partidosGanados"] =
+                usuario.partidosGanados
+            if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) camposModificados["partidosPerdidos"] =
+                usuario.partidosPerdidos
 
             // Si no hay cambios, devolvemos Result.success sin tocar Firestore
             if (camposModificados.isEmpty()) {
@@ -116,41 +126,20 @@ object UsuarioRepository {
     }
 
 
-
     /**
      * Obtener un usuario por su UID.
      */
     suspend fun obtenerUsuario(uid: String): Result<Usuario> {
         return try {
             val snapshot = usuariosCollection.document(uid).get().await()
-            val usuario = snapshot.toObject(Usuario::class.java) ?: return Result.failure(IllegalStateException("Usuario no encontrado"))
+            val usuario = snapshot.toObject(Usuario::class.java) ?: return Result.failure(
+                IllegalStateException("Usuario no encontrado")
+            )
             Result.success(usuario)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
-
-
-    /**
-     * Eliminar un usuario por su UID.
-     */
-    suspend fun eliminarUsuario(uid: String) {
-        usuariosCollection.document(uid).delete().await()
-    }
-
-    /**
-     * Obtener todos los usuarios (por ejemplo, para buscador o lista de amigos).
-     */
-    suspend fun obtenerTodos(): List<Usuario> {
-        val snapshot = usuariosCollection.get().await()
-        return snapshot.documents.mapNotNull { it.toObject<Usuario>() }
-    }
-
-    /**
-     * Actualizar campos individuales del usuario.
-     * Ejemplo: actualizar nivel o estadísticas.
-     */
-    suspend fun actualizarCampo(uid: String, campo: String, valor: Any) {
-        usuariosCollection.document(uid).update(campo, valor).await()
-    }
 }
+
+

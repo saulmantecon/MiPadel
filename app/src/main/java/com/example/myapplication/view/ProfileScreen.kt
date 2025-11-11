@@ -1,54 +1,75 @@
 package com.example.myapplication.view
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.myapplication.viewmodel.ProfileViewModel
-import kotlinx.coroutines.launch
-
+import java.io.File
 
 @Composable
 fun ProfileScreen(
     navController: NavHostController,
     viewModel: ProfileViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val colors = MaterialTheme.colorScheme
-    val usuario by viewModel.usuario.collectAsState() // Observa cambios en tiempo real
+    val usuario by viewModel.usuario.collectAsState()
+
     var editMode by remember { mutableStateOf(false) }
     var hasEdited by remember { mutableStateOf(false) }
 
     var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
     var username by remember { mutableStateOf(usuario?.username ?: "") }
 
+    // URI de foto actual o nueva
+    var fotoUri by remember { mutableStateOf<Uri?>(null) }
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Control del diálogo Compose
+    var showDialog by remember { mutableStateOf(false) }
+
+    // Launchers para cámara y galería
+    val takePhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempPhotoUri != null) {
+            fotoUri = tempPhotoUri
+            hasEdited = true
+        }
+    }
+
+    val pickPhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            fotoUri = uri
+            hasEdited = true
+        }
+    }
 
     MainScaffold(
         navController = navController,
@@ -56,13 +77,12 @@ fun ProfileScreen(
         onEditClick = {
             if (editMode) hasEdited = true
             editMode = !editMode
-        }) { padding, snackbarHostState ->
+        }
+    ) { padding, snackbarHostState ->
 
         if (usuario == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = colors.primary)
@@ -75,25 +95,74 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Cuando editMode se vuelve false (acabas de guardar), se actualiza el usuario
-            LaunchedEffect(editMode) {
-                if (!editMode && hasEdited) {
-                    usuario?.let {
-                        val actualizado = it.copy(
-                            nombre = nombre.trim(),
-                            username = username.trim()
+            // IMAGEN DE PERFIL (con placeholder y mejor estilo)
+            Box(
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .size(140.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = colors.surfaceVariant.copy(alpha = 0.3f),
+                    tonalElevation = 6.dp,
+                    shadowElevation = 6.dp
+                ) {
+                    if (fotoUri != null || usuario?.fotoPerfilUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fotoUri ?: usuario?.fotoPerfilUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier
+                                .size(140.dp)
+                                .clip(CircleShape)
                         )
-                        val message = viewModel.updateUsuario(actualizado)
-                        snackbarHostState.showSnackbar(message)
+                    } else {
+                        // Placeholder cuando no hay imagen
+                        Box(
+                            modifier = Modifier
+                                .size(140.dp)
+                                .clip(CircleShape)
+                                .background(colors.surfaceVariant.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Sin foto",
+                                tint = colors.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(90.dp)
+                            )
+                        }
                     }
-                    hasEdited = false // reseteamos para siguientes usos
+                }
+
+                // Botón para cambiar imagen
+                if (editMode) {
+                    IconButton(
+                        onClick = { showDialog = true },
+                        modifier = Modifier
+                            .offset(x = (-6).dp, y = (-6).dp)
+                            .size(42.dp)
+                            .background(colors.primary, CircleShape)
+                            .border(2.dp, colors.background, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Cambiar foto",
+                            tint = colors.onPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
 
-            // CAMPOS
+            // Campos de texto
             OutlinedTextField(
                 value = nombre,
                 onValueChange = { nombre = it },
@@ -113,6 +182,69 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(50)
             )
+
+            // Efecto: guardar cambios al confirmar (tick)
+            LaunchedEffect(editMode) {
+                if (!editMode && hasEdited) {
+                    usuario?.let {
+                        val actualizado = it.copy(
+                            nombre = nombre.trim(),
+                            username = username.trim()
+                        )
+                        val message = viewModel.updateUsuarioCompleto(context, actualizado, fotoUri)
+                        snackbarHostState.showSnackbar(message)
+                        hasEdited = false
+                    }
+                }
+            }
+        }
+
+        // Diálogo Compose (Galería / Cámara)
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = { Text("Seleccionar imagen", textAlign = TextAlign.Center) },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Button(
+                            onClick = {
+                                showDialog = false
+                                pickPhotoLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            shape = RoundedCornerShape(30.dp)
+                        ) {
+                            Text("Elegir desde galería")
+                        }
+                        Button(
+                            onClick = {
+                                showDialog = false
+                                tempPhotoUri = createImageUri(context)
+                                takePhotoLauncher.launch(tempPhotoUri)
+                            },
+                            shape = RoundedCornerShape(30.dp)
+                        ) {
+                            Text("Tomar una foto")
+                        }
+                    }
+                },
+                confirmButton = {},
+                containerColor = colors.surface
+            )
         }
     }
+}
+
+/** Crea una URI temporal para guardar la foto de la cámara **/
+fun createImageUri(context: Context): Uri {
+    val file = File.createTempFile("profile_photo_", ".jpg", context.cacheDir)
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        file
+    )
 }

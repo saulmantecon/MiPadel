@@ -1,7 +1,10 @@
 package com.example.myapplication.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import com.example.myapplication.data.CurrentUserManager
+import com.example.myapplication.data.ImageUploader
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.Usuario
 import kotlinx.coroutines.flow.StateFlow
@@ -10,14 +13,30 @@ class ProfileViewModel : ViewModel() {
 
     val usuario = CurrentUserManager.usuario
 
-    suspend fun updateUsuario(usuario: Usuario): String {
+    suspend fun updateUsuarioCompleto(
+        context: Context,
+        usuario: Usuario,
+        nuevaImagenUri: Uri?
+    ): String {
         return try {
-            val result = UsuarioRepository.updateUsuario(usuario)
+            var usuarioActualizado = usuario
+
+            // Si el usuario ha elegido una nueva imagen, la subimos
+            if (nuevaImagenUri != null) {
+                val nuevaUrl = ImageUploader.uploadImage(context, nuevaImagenUri)
+                if (nuevaUrl != null) {
+                    usuarioActualizado = usuarioActualizado.copy(fotoPerfilUrl = nuevaUrl)
+                } else {
+                    return "Error al subir la imagen"
+                }
+            }
+
+            // Actualizamos Firestore
+            val result = UsuarioRepository.updateUsuario(usuarioActualizado)
             result.fold(
                 onSuccess = {
-                    // Esto ya actualiza el flujo global automáticamente
-                    CurrentUserManager.setUsuario(usuario)
-                    "Perfil actualizado correctamente."
+                    CurrentUserManager.setUsuario(usuarioActualizado)
+                    "Perfil actualizado correctamente"
                 },
                 onFailure = { e ->
                     "Error al actualizar usuario: ${e.message ?: "desconocido"}"
