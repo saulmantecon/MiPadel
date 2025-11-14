@@ -82,7 +82,10 @@ object UsuarioRepository {
             Result.failure(e)
         }
     }
-
+    /**
+     * Actualiza el documento del usuario en Firestore.
+     * Retorna Result<Unit> indicando éxito o error.
+     */
     suspend fun updateUsuario(usuario: Usuario): Result<Unit> {
         return try {
             // Obtenemos el usuario actual en memoria

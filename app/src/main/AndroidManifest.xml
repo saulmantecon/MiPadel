@@ -29,7 +29,7 @@
             </intent-filter>
 
         </activity>
-        <!--  Añadir esto para evitar el crash al tomar foto -->
+        <!-- FileProvider: necesario para acceder al archivo temporal de la cámara -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

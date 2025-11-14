@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
@@ -45,14 +46,15 @@ fun ProfileScreen(
     var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
     var username by remember { mutableStateOf(usuario?.username ?: "") }
 
-    // URI de foto actual o nueva
+    // URIs para la imagen (foto nueva o temporal de cámara)
     var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Control del diálogo Compose
+    // diálogo de cámara/galería
     var showDialog by remember { mutableStateOf(false) }
 
     // Launchers para cámara y galería
+    // recibe un URI donde se guardará la foto
     val takePhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -61,7 +63,7 @@ fun ProfileScreen(
             hasEdited = true
         }
     }
-
+    // devuelve un URI del contenido seleccionado
     val pickPhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -75,6 +77,7 @@ fun ProfileScreen(
         navController = navController,
         isEditing = editMode,
         onEditClick = {
+            // Cambia entre modo edición y confirmación
             if (editMode) hasEdited = true
             editMode = !editMode
         }
@@ -99,13 +102,14 @@ fun ProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // IMAGEN DE PERFIL (con placeholder y mejor estilo)
+            // Imagen de perfil
             Box(
                 modifier = Modifier
                     .padding(top = 16.dp)
                     .size(140.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
+                //circulo con imagen o placeholder
                 Surface(
                     shape = CircleShape,
                     color = colors.surfaceVariant.copy(alpha = 0.3f),
@@ -113,6 +117,7 @@ fun ProfileScreen(
                     shadowElevation = 6.dp
                 ) {
                     if (fotoUri != null || usuario?.fotoPerfilUrl != null) {
+                        //imagen de perfil del usuario
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(fotoUri ?: usuario?.fotoPerfilUrl)
@@ -142,7 +147,7 @@ fun ProfileScreen(
                     }
                 }
 
-                // Botón para cambiar imagen
+                // Botón para cambiar imagen, solo aparece si esta editando
                 if (editMode) {
                     IconButton(
                         onClick = { showDialog = true },
@@ -199,14 +204,25 @@ fun ProfileScreen(
             }
         }
 
-        // Diálogo Compose (Galería / Cámara)
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("Seleccionar imagen", textAlign = TextAlign.Center) },
+                shape = RoundedCornerShape(20.dp),
+                containerColor = colors.surfaceVariant.copy(alpha = 0.98f),
+                title = {
+                    Text(
+                        "Seleccionar imagen",
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
                 text = {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Button(
@@ -216,8 +232,11 @@ fun ProfileScreen(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
                             },
-                            shape = RoundedCornerShape(30.dp)
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier.fillMaxWidth(0.8f)
                         ) {
+                            Icon(Icons.Default.AccountBox, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
                             Text("Elegir desde galería")
                         }
                         Button(
@@ -226,14 +245,16 @@ fun ProfileScreen(
                                 tempPhotoUri = createImageUri(context)
                                 takePhotoLauncher.launch(tempPhotoUri)
                             },
-                            shape = RoundedCornerShape(30.dp)
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier.fillMaxWidth(0.8f)
                         ) {
+                            Icon(Icons.Default.Person, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
                             Text("Tomar una foto")
                         }
                     }
                 },
-                confirmButton = {},
-                containerColor = colors.surface
+                confirmButton = {}
             )
         }
     }

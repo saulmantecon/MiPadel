@@ -10,9 +10,15 @@ import com.example.myapplication.model.Usuario
 import kotlinx.coroutines.flow.StateFlow
 
 class ProfileViewModel : ViewModel() {
-
+    // Observa el usuario actual desde el CurrentUserManager
     val usuario = CurrentUserManager.usuario
 
+    /**
+     * Actualiza los datos del usuario:
+     * - Si hay una nueva imagen, primero la sube a ImgBB.
+     * - Luego actualiza el documento en Firestore.
+     * - Finalmente actualiza el flujo global (StateFlow).
+     */
     suspend fun updateUsuarioCompleto(
         context: Context,
         usuario: Usuario,
