@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.myapplication.view.EstadisticasScreen
 import com.example.myapplication.view.HomeScreen
 import com.example.myapplication.view.LoginScreen
 import com.example.myapplication.view.ProfileScreen
@@ -37,7 +38,11 @@ fun NavigationWrapper(navHostController: NavHostController, modifier: Modifier) 
         composable("community") {  }
 
         composable("profile") {
-            ProfileScreen(navHostController)
+            ProfileScreen(navHostController,
+                onVerEstadisticas = { navHostController.navigate("estadisticasScreen") })
+        }
+        composable("estadisticasScreen"){
+            EstadisticasScreen(navHostController)
         }
     }
 }
