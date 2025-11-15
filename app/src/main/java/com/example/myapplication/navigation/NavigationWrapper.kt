@@ -39,9 +39,9 @@ fun NavigationWrapper(navHostController: NavHostController, modifier: Modifier) 
 
         composable("profile") {
             ProfileScreen(navHostController,
-                onVerEstadisticas = { navHostController.navigate("estadisticasScreen") })
+                onVerEstadisticas = { navHostController.navigate("estadisticas") })
         }
-        composable("estadisticasScreen"){
+        composable("estadisticas"){
             EstadisticasScreen(navHostController)
         }
     }

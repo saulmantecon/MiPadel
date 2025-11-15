@@ -31,4 +31,9 @@ sealed class Screen(
         showMenu = true,
         showEdit = true
     )
+    object Estadisticas: Screen(
+        route = "estadisticas",
+        title = "Estadisticas",
+        showBack = true
+    )
 }

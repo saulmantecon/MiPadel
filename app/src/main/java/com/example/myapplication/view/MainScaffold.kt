@@ -30,6 +30,7 @@ fun MainScaffold(
         Screen.Home.route -> Screen.Home
         Screen.Community.route -> Screen.Community
         Screen.Profile.route -> Screen.Profile
+        Screen.Estadisticas.route -> Screen.Estadisticas
         else -> Screen.Home
     }
 
@@ -52,6 +53,7 @@ fun MainScaffold(
                 onSearchClick = { /* buscar usuario */ },
                 onEditClick = onEditClick,
                 isEditing = isEditing,
+                onBackClick = {navController.popBackStack()}
                 )
         },
 
