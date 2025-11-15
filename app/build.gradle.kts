@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    implementation(libs.datastore)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

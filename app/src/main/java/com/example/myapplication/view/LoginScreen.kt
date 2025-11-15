@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,8 +51,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.R
+import com.example.myapplication.data.UserPreferencesDataStore
 import com.example.myapplication.model.AuthState
 import com.example.myapplication.viewmodel.LoginViewModel
+import com.example.myapplication.viewmodel.LoginViewModelFactory
 
 
 @Composable
@@ -61,8 +64,19 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var keepLoggedIn by remember { mutableStateOf(true) }
-    val viewModel: LoginViewModel = viewModel()
+    var keepLoggedIn by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    // 1. Creamos DataStore una sola vez
+    val prefs = remember { UserPreferencesDataStore(context) }
+
+    // 2. Creamos el ViewModel usando la Factory
+    val viewModel: LoginViewModel = viewModel(
+        factory = LoginViewModelFactory(prefs)
+    )
+    // 4. Sincronizar el checkbox con el ViewModel
+    LaunchedEffect(keepLoggedIn) {
+        viewModel.keepLoggedIn = keepLoggedIn
+    }
     /*
     val authState by viewModel.authState.collectAsState()
     1. Suscribe la pantalla al flujo authState del ViewModel.
@@ -202,7 +216,10 @@ fun LoginScreen(
             ) {
                 Checkbox(
                     checked = keepLoggedIn,
-                    onCheckedChange = { keepLoggedIn = it },
+                    onCheckedChange = { checked ->
+                        keepLoggedIn = checked
+                        viewModel.keepLoggedIn = checked
+                    },
                     colors = CheckboxDefaults.colors(
                         checkedColor = colors.primary,
                         uncheckedColor = colors.onBackground
