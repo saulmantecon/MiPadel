@@ -58,4 +58,14 @@ class UserPreferencesDataStore(private val context: Context) {
             it.remove(KEY_SAVED_UID)
         }
     }
+
+    suspend fun toggleThemeMode(current: String) {
+        val newMode = when (current) {
+            "light" -> "dark"
+            "dark" -> "system"
+            else -> "light"
+        }
+        saveThemeMode(newMode)
+    }
+
 }

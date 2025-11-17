@@ -15,17 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -40,22 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.R
-import com.example.myapplication.data.UserPreferencesDataStore
 import com.example.myapplication.model.AuthState
 import com.example.myapplication.viewmodel.LoginViewModel
-import com.example.myapplication.viewmodel.LoginViewModelFactory
-
+import com.example.myapplication.viewmodel.SettingsViewModel
 
 @Composable
 fun LoginScreen(
@@ -64,202 +51,136 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var keepLoggedIn by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    // 1. Creamos DataStore una sola vez
-    val prefs = remember { UserPreferencesDataStore(context) }
-
-    // 2. Creamos el ViewModel usando la Factory
-    val viewModel: LoginViewModel = viewModel(
-        factory = LoginViewModelFactory(prefs)
-    )
-    // 4. Sincronizar el checkbox con el ViewModel
-    LaunchedEffect(keepLoggedIn) {
-        viewModel.keepLoggedIn = keepLoggedIn
-    }
-    /*
-    val authState by viewModel.authState.collectAsState()
-    1. Suscribe la pantalla al flujo authState del ViewModel.
-    2. Convierte el StateFlow en un State de Compose (para que se pueda usar en when, Text(), etc.).
-    3.Redibuja automáticamente la UI cada vez que el estado cambia.
-     */
-    val authState by viewModel.authState.collectAsState()
-
-    /*
-     remember guarda el objeto entre recomposiciones.
-     by desempaqueta automáticamente el valor de un State observable.
-     */
-    val snackbarHostState = remember { SnackbarHostState() }
-
 
     val colors = MaterialTheme.colorScheme
+
+    val viewModel: LoginViewModel = viewModel()
+    val settingsViewModel: SettingsViewModel = viewModel()
+
+    // Preferencia persistente del checkbox
+    val keepLoggedIn by settingsViewModel.keepLoggedIn.collectAsState(initial = false)
+
+    val authState by viewModel.authState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background) // Se adapta al modo claro/oscuro
+            .background(colors.background)
             .padding(24.dp)
     ) {
-        //Se ejecuta SOLO cuando cambia la key authState
         LaunchedEffect(authState) {
             when (authState) {
                 is AuthState.Error -> {
                     snackbarHostState.showSnackbar(
-                        message = (authState as AuthState.Error).message,
-                        withDismissAction = true
+                        (authState as AuthState.Error).message
                     )
                 }
-
                 is AuthState.Success -> {
                     onLoginClick()
-                    //Muestra el snackbar
                     snackbarHostState.showSnackbar(
-                        message = (authState as AuthState.Success).message,
-                        withDismissAction = true
+                        (authState as AuthState.Success).message
                     )
-                    //Navega a Home
                 }
-
                 else -> Unit
             }
         }
-        //Overlay de carga
+
         if (authState is AuthState.Loading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .zIndex(2f), //lo pone encima de todo
+                    .background(Color.Black.copy(alpha = 0.4f)),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = Color.White)
             }
         }
-        // SnackbarHost — donde aparecerán los mensajes
+
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter) // posición inferior
-                .padding(bottom = 16.dp)
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            //Logo
+
             Image(
                 painter = painterResource(id = R.drawable.logomipadel),
                 contentDescription = "Logo MiPádel",
                 modifier = Modifier
                     .size(320.dp)
-                    .padding(bottom = 16.dp)
                     .clip(CircleShape)
             )
 
-            Text(
-                text = "Inicio de sesión",
-                color = colors.onBackground,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
+            Text("Inicio de sesión", color = colors.onBackground)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            //textfieldUsuario
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Usuario", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Usuario") },
                 singleLine = true,
-                shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Contraseña
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Contraseña") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Checkbox
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = keepLoggedIn,
                     onCheckedChange = { checked ->
-                        keepLoggedIn = checked
-                        viewModel.keepLoggedIn = checked
-                    },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = colors.primary,
-                        uncheckedColor = colors.onBackground
-                    )
+                        settingsViewModel.saveKeepLoggedIn(checked)
+                    }
                 )
-                Text(
-                    text = "Mantener sesión iniciada",
-                    color = colors.onBackground,
-                    fontSize = 14.sp
-                )
+                Text("Mantener sesión iniciada", color = colors.onBackground)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón Iniciar Sesión
             Button(
-                onClick = { viewModel.loginUser(username.trim(), password.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                shape = RoundedCornerShape(50),
+                onClick = {
+                    viewModel.loginUser(
+                        username.trim(),
+                        password.trim(),
+                        keepLoggedIn,
+                        settingsViewModel,
+
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
             ) {
-                Text(
-                    text = "Iniciar Sesión",
-                    color = colors.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Text("Iniciar Sesión", color = colors.onPrimary)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Texto final
             Text(
                 text = "¿No tienes cuenta? Regístrate",
                 color = colors.onBackground,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.clickable { onRegisterClick() }
+                modifier = Modifier.clickable(onClick = onRegisterClick)
             )
         }
     }

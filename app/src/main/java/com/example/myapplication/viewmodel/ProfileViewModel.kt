@@ -7,7 +7,6 @@ import com.example.myapplication.data.CurrentUserManager
 import com.example.myapplication.data.ImageUploader
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.Usuario
-import kotlinx.coroutines.flow.StateFlow
 
 class ProfileViewModel : ViewModel() {
     // Observa el usuario actual desde el CurrentUserManager

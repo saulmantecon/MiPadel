@@ -2,4 +2,18 @@
 <resources>
 
     <style name="Theme.MyApplication" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MyApp.Splash" parent="Theme.SplashScreen">
+        <!-- Fondo del splash (puedes poner otro color si quieres) -->
+        <item name="windowSplashScreenBackground">@color/black</item>
+
+        <!-- Tu logo como splash -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logomipadelsinfondo</item>
+
+        <!-- Duración mínima visible (opcional) -->
+        <item name="windowSplashScreenAnimationDuration">500</item>
+
+        <!-- Tema real al salir del splash -->
+        <item name="postSplashScreenTheme">@style/Theme.MyApplication</item>
+    </style>
+
 </resources>

@@ -12,8 +12,8 @@ import com.example.myapplication.view.ProfileScreen
 import com.example.myapplication.view.RegisterScreen
 
 @Composable
-fun NavigationWrapper(navHostController: NavHostController, modifier: Modifier) {
-    NavHost(navController = navHostController, startDestination = "profile", modifier = modifier){
+fun NavigationWrapper(navHostController: NavHostController, startDestination: String, modifier: Modifier) {
+    NavHost(navController = navHostController, startDestination = startDestination, modifier = modifier){
         composable("login"){
             LoginScreen( onLoginClick = {
                 navHostController.navigate("profile")},
