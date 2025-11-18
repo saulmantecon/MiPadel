@@ -143,6 +143,28 @@ object UsuarioRepository {
             Result.failure(e)
         }
     }
+
+    // BUSCAR USUARIOS POR USERNAME
+    suspend fun buscarUsuarios(query: String): Result<List<Usuario>> {
+        return try {
+            if (query.isBlank()) {
+                return Result.success(emptyList())
+            }
+
+            val snapshot = usuariosCollection
+                .whereGreaterThanOrEqualTo("username", query)
+                .whereLessThanOrEqualTo("username", query + "\uf8ff")
+                .get()
+                .await()
+
+            val lista = snapshot.toObjects(Usuario::class.java)
+
+            Result.success(lista)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 

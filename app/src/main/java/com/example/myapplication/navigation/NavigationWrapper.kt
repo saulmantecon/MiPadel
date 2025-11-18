@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.myapplication.view.CommunityScreen
 import com.example.myapplication.view.EstadisticasScreen
 import com.example.myapplication.view.HomeScreen
 import com.example.myapplication.view.LoginScreen
@@ -35,7 +36,9 @@ fun NavigationWrapper(navHostController: NavHostController, startDestination: St
         composable("home"){
             HomeScreen()
         }
-        composable("community") {  }
+        composable("community") {
+            CommunityScreen(navHostController)
+        }
 
         composable("profile") {
             ProfileScreen(navHostController,
