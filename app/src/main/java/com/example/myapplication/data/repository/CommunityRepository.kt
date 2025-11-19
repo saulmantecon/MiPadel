@@ -18,54 +18,90 @@ object CommunityRepository {
     suspend fun enviarSolicitud(fromUid: String, toUid: String): Result<Unit> {
         return try {
 
-            // 1) Primero miramos si ya existe una relación
+            // 1. Buscar si ya existe una relación entre ambos (en cualquier orden)
             val query = amistadesCollection
                 .whereIn("user1", listOf(fromUid, toUid))
                 .whereIn("user2", listOf(fromUid, toUid))
+                .limit(1)
                 .get()
                 .await()
 
+            // 2. Si existe un documento → gestionar según estado
             if (!query.isEmpty) {
                 val doc = query.documents.first()
+                val currentUser1 = doc.getString("user1")!!
+                val currentUser2 = doc.getString("user2")!!
                 val estadoActual = doc.getString("estado") ?: "pendiente"
 
-                return when (estadoActual) {
-                    "pendiente" ->
-                        Result.failure(Exception("Ya hay una solicitud pendiente."))
-
-                    "aceptado" ->
-                        Result.failure(Exception("Ya sois amigos."))
-
-                    "rechazado" -> {
-                        // REENVIAR: reseteamos el estado
-                        doc.reference.update(
-                            mapOf(
-                                "estado" to "pendiente",
-                                "enviadoPor" to fromUid,
-                                "timestamp" to Timestamp.now()
-                            )
-                        ).await()
-
-                        Result.success(Unit)
-                    }
-                    "eliminado" -> {
-                        // Reutilizar documento eliminando
-                        doc.reference.update(
-                            mapOf(
-                                "estado" to "pendiente",
-                                "enviadoPor" to fromUid,
-                                "timestamp" to Timestamp.now()
-                            )
-                        ).await()
-
-                        Result.success(Unit)
-                    }
-
-                    else -> Result.failure(Exception("Estado desconocido"))
+                // 2.1 Si ya son amigos
+                if (estadoActual == "aceptado") {
+                    return Result.failure(Exception("Ya sois amigos."))
                 }
+
+                // 2.2 Si hay pendiente (da igual quién la envió)
+                if (estadoActual == "pendiente") {
+                    return Result.failure(Exception("Ya hay una solicitud pendiente."))
+                }
+
+                // 2.3 Si estaba rechazada, puedes reenviar la solicitud
+                if (estadoActual == "rechazado") {
+                    // el que envía AHORA es el nuevo fromUid
+                    val nuevoUser1: String
+                    val nuevoUser2: String
+
+                    // Si el que envía está en user2 → hay que invertir roles
+                    if (fromUid == currentUser2) {
+                        nuevoUser1 = fromUid
+                        nuevoUser2 = currentUser1
+                    } else {
+                        nuevoUser1 = currentUser1
+                        nuevoUser2 = currentUser2
+                    }
+
+                    doc.reference.update(
+                        mapOf(
+                            "user1" to nuevoUser1,
+                            "user2" to nuevoUser2,
+                            "estado" to "pendiente",
+                            "enviadoPor" to fromUid,
+                            "timestamp" to Timestamp.now()
+                        )
+                    ).await()
+
+                    return Result.success(Unit)
+                }
+
+                // 2.4 Si estaba eliminado → reenvío EXACTAMENTE igual que rechazado
+                if (estadoActual == "eliminado") {
+
+                    val nuevoUser1: String
+                    val nuevoUser2: String
+
+                    if (fromUid == currentUser2) {
+                        nuevoUser1 = fromUid
+                        nuevoUser2 = currentUser1
+                    } else {
+                        nuevoUser1 = currentUser1
+                        nuevoUser2 = currentUser2
+                    }
+
+                    doc.reference.update(
+                        mapOf(
+                            "user1" to nuevoUser1,
+                            "user2" to nuevoUser2,
+                            "estado" to "pendiente",
+                            "enviadoPor" to fromUid,
+                            "timestamp" to Timestamp.now()
+                        )
+                    ).await()
+
+                    return Result.success(Unit)
+                }
+
+                return Result.failure(Exception("Estado desconocido"))
             }
 
-            // 2) NO existe → crear solicitud nueva
+            // 3. NO existe relación → crear solicitud nueva
             val data = mapOf(
                 "user1" to fromUid,
                 "user2" to toUid,
@@ -82,6 +118,7 @@ object CommunityRepository {
             Result.failure(e)
         }
     }
+
 
 
 
