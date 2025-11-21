@@ -26,7 +26,7 @@ object CommunityRepository {
                 .get()
                 .await()
 
-            // 2. Si existe un documento → gestionar según estado
+            // 2. Si existe un documento -> gestionar según estado
             if (!query.isEmpty) {
                 val doc = query.documents.first()
                 val currentUser1 = doc.getString("user1")!!
@@ -71,7 +71,7 @@ object CommunityRepository {
                     return Result.success(Unit)
                 }
 
-                // 2.4 Si estaba eliminado → reenvío EXACTAMENTE igual que rechazado
+                // 2.4 Si estaba eliminado -> reenvío EXACTAMENTE igual que rechazado
                 if (estadoActual == "eliminado") {
 
                     val nuevoUser1: String
@@ -101,7 +101,7 @@ object CommunityRepository {
                 return Result.failure(Exception("Estado desconocido"))
             }
 
-            // 3. NO existe relación → crear solicitud nueva
+            // 3. NO existe relación -> crear solicitud nueva
             val data = mapOf(
                 "user1" to fromUid,
                 "user2" to toUid,
@@ -118,8 +118,6 @@ object CommunityRepository {
             Result.failure(e)
         }
     }
-
-
 
 
     // 2. OBTENER SOLICITUDES RECIBIDAS
@@ -237,5 +235,31 @@ object CommunityRepository {
             Result.failure(e)
         }
     }
+
+
+    suspend fun obtenerEstadoRelacion(uid1: String, uid2: String): Result<String?> {
+        return try {
+            val query = amistadesCollection
+                .whereIn("user1", listOf(uid1, uid2))
+                .whereIn("user2", listOf(uid1, uid2))
+                .limit(1)
+                .get()
+                .await()
+
+            if (query.isEmpty) {
+                Result.success(null) // No existe relación
+            } else {
+                val estado = query.documents.first().getString("estado")
+                Result.success(estado)
+            }
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+
+
 
 }

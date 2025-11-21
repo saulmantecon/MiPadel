@@ -124,5 +124,13 @@ class CommunityViewModel : ViewModel() {
         }
     }
 
+    fun obtenerEstadoRelacion(uid: String, callback: (String?) -> Unit) {
+        viewModelScope.launch {
+            val result = CommunityRepository.obtenerEstadoRelacion(currentUid, uid)
+            callback(result.getOrNull()) // puede ser null, pendiente, aceptado, rechazado, eliminado
+        }
+    }
+
+
 }
 

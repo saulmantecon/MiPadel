@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.example.myapplication.model.Amistad
 import com.example.myapplication.model.Usuario
 import com.example.myapplication.viewmodel.CommunityViewModel
 import kotlinx.coroutines.launch
@@ -105,15 +104,17 @@ fun CommunityScreen(
                 resultadosBusqueda.forEach { usuario ->
                     UsuarioBusquedaItem(
                         usuario = usuario,
+                        onObtenerEstado = { callback ->
+                            viewModel.obtenerEstadoRelacion(usuario.uid, callback)
+                        },
                         onEnviarSolicitud = {
                             viewModel.enviarSolicitud(usuario.uid) { msg ->
-                                scope.launch {
-                                    snackbar.showSnackbar(msg)
-                                }
+                                scope.launch { snackbar.showSnackbar(msg) }
                             }
                         }
                     )
                 }
+
             }
 
 
@@ -140,7 +141,6 @@ fun CommunityScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     solicitudes.forEach { (amistad, usuario) ->
                         SolicitudItem(
-                            amistad = amistad,
                             usuario = usuario,
                             onAceptar = { viewModel.aceptarSolicitud(amistad) },
                             onRechazar = { viewModel.rechazarSolicitud(amistad) }
@@ -175,49 +175,69 @@ fun CommunityScreen(
 @Composable
 fun UsuarioBusquedaItem(
     usuario: Usuario,
+    onObtenerEstado: ((String?) -> Unit) -> Unit,
     onEnviarSolicitud: () -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
-    var enviado by remember { mutableStateOf(false) }
+    var estado by remember { mutableStateOf<String?>(null) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+    // Al entrar en pantalla, pedimos estado a Firestore
+    LaunchedEffect(usuario.uid) {
+        onObtenerEstado { nuevoEstado ->
+            estado = nuevoEstado // puede ser null, pendiente, aceptado…
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
 
-            // FOTO
-            AsyncImage(
-                model = usuario.fotoPerfilUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-            )
+        Text(usuario.username)
 
-            Spacer(Modifier.width(12.dp))
+        when (estado) {
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(usuario.username, style = MaterialTheme.typography.titleMedium)
-                Text(usuario.nombre, style = MaterialTheme.typography.bodyMedium)
+            // 1. NO EXISTE RELACIÓN -> enviar solicitud
+            null -> {
+                Button(enabled = false, onClick = {}) { Text("Cargando...") }
             }
 
-            Button(onClick = {
-                onEnviarSolicitud()
-                enviado = true
-            }) {
-                Text(if (enviado) "Enviado" else "Enviar")
+            // 2. YA ENVIADA -> botón disabled
+            "pendiente" -> {
+                Button(enabled = false, onClick = {}) {
+                    Text("Enviado")
+                }
+            }
+
+            // 3. YA AMIGOS
+            "aceptado" -> {
+                Button(enabled = false, onClick = {}) {
+                    Text("Ya es tu amigo")
+                }
+            }
+
+            // 4. RECICLABLES: rechazado o eliminado → enviar otra vez
+            "rechazado", "eliminado" -> {
+                Button(onClick = onEnviarSolicitud) {
+                    Text("Enviar solicitud")
+                }
+            }
+
+            // 5. fallback
+            else -> {
+                Button( onClick = {}) {
+                    Text("Enviar solicitud")
+                }
             }
         }
     }
 }
 
+
 @Composable
 fun SolicitudItem(
-    amistad: Amistad,
     usuario: Usuario,
     onAceptar: () -> Unit,
     onRechazar: () -> Unit
