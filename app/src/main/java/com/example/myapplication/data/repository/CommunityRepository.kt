@@ -182,6 +182,7 @@ object CommunityRepository {
     }
 
 
+
     // 6. OBTENER LISTA DE AMIGOS (usuarios aceptados)
     suspend fun obtenerAmigos(uid: String): Result<List<Usuario>> {
         return try {

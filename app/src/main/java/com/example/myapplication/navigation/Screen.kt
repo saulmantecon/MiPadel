@@ -21,8 +21,8 @@ sealed class Screen(
         route = "community",
         title = "Lista de amigos",
         showMenu = true,
-        showAdd = true,
-        showSearch = true
+        showAdd = false,
+        showSearch = false
     )
 
     object Profile : Screen(

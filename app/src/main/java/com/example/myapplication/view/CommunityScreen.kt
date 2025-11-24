@@ -183,7 +183,7 @@ fun UsuarioBusquedaItem(
     // Al entrar en pantalla, pedimos estado a Firestore
     LaunchedEffect(usuario.uid) {
         onObtenerEstado { nuevoEstado ->
-            estado = nuevoEstado // puede ser null, pendiente, aceptado…
+            estado = nuevoEstado // puede ser null, pendiente, aceptado...
         }
     }
 

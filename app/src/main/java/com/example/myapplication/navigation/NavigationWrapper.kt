@@ -34,7 +34,7 @@ fun NavigationWrapper(navHostController: NavHostController, startDestination: St
             )
         }
         composable("home"){
-            HomeScreen()
+            HomeScreen(navHostController)
         }
         composable("community") {
             CommunityScreen(navHostController)

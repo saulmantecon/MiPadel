@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 fun MainScaffold(
     isEditing: Boolean = false,
     onEditClick: () -> Unit = {},
+    onFabClick: () -> Unit = {},
     navController: NavHostController,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     settingsViewModel: SettingsViewModel = viewModel(),
@@ -103,7 +104,7 @@ fun MainScaffold(
             floatingActionButton = {
                 if (currentScreen.showFab) {
                     FloatingActionButton(
-                        onClick = { /* acción del FAB */ },
+                        onClick = onFabClick,
                         containerColor = colors.primary,
                         contentColor = colors.onPrimary
                     ) {
