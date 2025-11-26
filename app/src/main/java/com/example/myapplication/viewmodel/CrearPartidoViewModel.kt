@@ -1,14 +1,16 @@
 package com.example.myapplication.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.model.Partido
 import com.example.myapplication.data.CurrentUserManager
 import com.example.myapplication.data.repository.HomeRepository
+import com.example.myapplication.model.Partido
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+
 class CrearPartidoViewModel : ViewModel() {
 
     private val _ubicacion = MutableStateFlow("")
@@ -23,18 +25,21 @@ class CrearPartidoViewModel : ViewModel() {
     private val _mensaje = MutableStateFlow<String?>(null)
     val mensaje = _mensaje.asStateFlow()
 
-    private val uidActual = CurrentUserManager.getUsuario()?.uid ?: ""
+    private val uidCreador = CurrentUserManager.getUsuario()?.uid ?: ""
 
-    fun setUbicacion(text: String) {
-        _ubicacion.value = text
+    fun setUbicacion(texto: String) {
+        _ubicacion.value = texto
     }
 
-    fun setFecha(ts: Timestamp) {
-        _fecha.value = ts
+    fun setFecha(timestamp: Timestamp) {
+        _fecha.value = timestamp
     }
 
     fun crearPartido() {
-        if (ubicacion.value.isBlank() || fecha.value == null) {
+        val ubic = _ubicacion.value.trim()
+        val fechaPartido = _fecha.value
+
+        if (ubic.isEmpty() || fechaPartido == null) {
             _mensaje.value = "Ubicación y fecha son obligatorias"
             return
         }
@@ -42,33 +47,36 @@ class CrearPartidoViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = true
 
+            val posiciones = listOf(uidCreador, "", "", "")
+
             val partido = Partido(
                 id = "",
-                creadorId = uidActual,
-                ubicacion = ubicacion.value.trim(),
+                creadorId = uidCreador,
+                ubicacion = ubic,
                 nivel = 0.0,
-                fecha = fecha.value,
-                jugadores = listOf(uidActual),
+                fecha = fechaPartido,
+                posiciones = posiciones,
                 maxJugadores = 4
             )
 
             val result = HomeRepository.crearPartido(partido)
+
             _mensaje.value = result.fold(
-                { "Partido creado correctamente" },
-                { it.message ?: "Error al crear partido" }
+                onSuccess = { "Partido creado correctamente" },
+                onFailure = { it.message ?: "Error al crear partido" }
             )
 
             _loading.value = false
         }
     }
 
+    fun limpiarMensaje() {
+        _mensaje.value = null
+    }
+
     fun resetForm() {
         _ubicacion.value = ""
         _fecha.value = null
-    }
-
-    fun limpiarMensaje() {
-        _mensaje.value = null
     }
 }
 

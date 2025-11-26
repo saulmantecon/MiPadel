@@ -14,36 +14,22 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 class HomeViewModel : ViewModel() {
 
-    // ---------------------------------------------------------
-    // UID del usuario actual
-    // ---------------------------------------------------------
-    val currentUid = CurrentUserManager.getUsuario()?.uid ?: ""
-
-    // ---------------------------------------------------------
-    // 1. Lista de partidos (tiempo real)
-    // ---------------------------------------------------------
     private val _partidos = MutableStateFlow<List<Partido>>(emptyList())
-    val partidos: StateFlow<List<Partido>> get() = _partidos.asStateFlow()
+    val partidos: StateFlow<List<Partido>> = _partidos.asStateFlow()
 
-    // ---------------------------------------------------------
-    // 2. Caché local de usuarios (para no pedirlos 1000 veces)
-    // ---------------------------------------------------------
-    private val usuariosCache = mutableMapOf<String, Usuario>()
-
-    // ---------------------------------------------------------
-    // 3. Mensajes (snackbar)
-    // ---------------------------------------------------------
     private val _mensaje = MutableStateFlow<String?>(null)
-    val mensaje: StateFlow<String?> get() = _mensaje.asStateFlow()
+    val mensaje: StateFlow<String?> = _mensaje.asStateFlow()
 
+    // cache de usuarios (para fotos + username)
+    private val _usuarios = MutableStateFlow<Map<String, Usuario>>(emptyMap())
+    val usuarios: StateFlow<Map<String, Usuario>> = _usuarios.asStateFlow()
+
+    val currentUid: String = CurrentUserManager.getUsuario()?.uid ?: ""
 
     init {
         escucharPartidos()
     }
 
-    // ---------------------------------------------------------
-    // ESCUCHAR PARTIDOS EN TIEMPO REAL
-    // ---------------------------------------------------------
     private fun escucharPartidos() {
         viewModelScope.launch {
             HomeRepository.escucharPartidos().collectLatest { lista ->
@@ -52,78 +38,69 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    // ---------------------------------------------------------
-    // OBTENER JUGADORES DE UN PARTIDO (con foto + username)
-    // ---------------------------------------------------------
-    fun obtenerJugadores(partido: Partido): List<Usuario> {
-        val lista = mutableListOf<Usuario>()
+    fun solicitarUsuario(uid: String) {
+        if (uid.isBlank()) return
 
-        partido.jugadores.forEach { uid ->
-            val usuario = usuariosCache[uid]
+        if (_usuarios.value.containsKey(uid)) return
 
-            if (usuario != null) {
-                lista.add(usuario)
-            } else {
-                // Cargar el usuario y cachearlo
-                viewModelScope.launch {
-                    val res = UsuarioRepository.obtenerUsuario(uid)
-                    res.getOrNull()?.let {
-                        usuariosCache[uid] = it
-                        // Actualizar UI re-emitiendo
-                        _partidos.value = _partidos.value
-                    }
+        viewModelScope.launch {
+            val res = UsuarioRepository.obtenerUsuario(uid)
+            res.getOrNull()?.let { usuario ->
+                _usuarios.value = _usuarios.value.toMutableMap().apply {
+                    put(uid, usuario)
                 }
             }
         }
-
-        return lista
     }
 
-    // ---------------------------------------------------------
-    // OCUPAR HUECO
-    // ---------------------------------------------------------
-    fun ocuparHueco(partidoId: String, slot: Int) {
-        viewModelScope.launch {
-            val result = HomeRepository.ocuparHueco(partidoId, slot, currentUid)
+    fun ocuparPosicion(partido: Partido, slot: Int) {
+        val uid = currentUid
 
+        // 1. Si ya está dentro del partido, no hacemos nada
+        if (partido.posiciones.contains(uid)) {
+            return
+        }
+
+        // 2. Si el hueco ya está ocupado → no hacemos nada
+        if (partido.posiciones[slot].isNotEmpty()) {
+            return
+        }
+
+        // 3. Ahora sí -> unirse
+        viewModelScope.launch {
+            val result = HomeRepository.ocuparPosicion(partido.id, slot, uid)
             _mensaje.value = result.fold(
                 onSuccess = { "Te uniste al partido" },
-                onFailure = { it.message ?: "Error al ocupar hueco" }
+                onFailure = { it.message ?: "Error al unirse" }
             )
         }
     }
 
-    // ---------------------------------------------------------
-    // SALIR DE UN HUECO
-    // ---------------------------------------------------------
-    fun salirDeHueco(partidoId: String, slot: Int) {
+
+    fun salirDePartido(partidoId: String) {
         viewModelScope.launch {
-            val result = HomeRepository.salirDeHueco(partidoId, currentUid)
-
-            _mensaje.value = result.fold(
+            val res = HomeRepository.salirDePartido(partidoId, currentUid)
+            _mensaje.value = res.fold(
                 onSuccess = { "Has salido del partido" },
-                onFailure = { it.message ?: "No puedes salir del partido" }
+                onFailure = { it.message ?: "No puedes salir" }
             )
         }
     }
 
-    // ---------------------------------------------------------
-    // BORRAR PARTIDO (solo si eres el creador)
-    // ---------------------------------------------------------
     fun borrarPartido(partidoId: String) {
         viewModelScope.launch {
-            val result = HomeRepository.borrarPartido(partidoId, currentUid)
-
-            _mensaje.value = result.fold(
+            val res = HomeRepository.borrarPartido(partidoId, currentUid)
+            _mensaje.value = res.fold(
                 onSuccess = { "Partido eliminado" },
                 onFailure = { it.message ?: "Error al borrar partido" }
             )
         }
     }
 
-    // ---------------------------------------------------------
-    // LIMPIAR MENSAJE
-    // ---------------------------------------------------------
+    fun mostrarMensaje(msg: String) {
+        _mensaje.value = msg
+    }
+
     fun limpiarMensaje() {
         _mensaje.value = null
     }
