@@ -99,7 +99,7 @@ fun EstadisticasScreen(
                         Column(Modifier.padding(12.dp)) {
                             Text("Ubicación: ${partido.ubicacion}")
                             Text("Nivel: ${partido.nivel}")
-                            Text("Jugadores: ${partido.jugadores.size}/${partido.maxJugadores}")
+                           // Text("Jugadores: ${partido.jugadores.size}/${partido.maxJugadores}")
                             Text("Fecha: ${partido.fecha?.toDate()}")
                         }
                     }

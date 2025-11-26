@@ -1,7 +1,9 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.Partido
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -10,96 +12,72 @@ import kotlinx.coroutines.tasks.await
 
 
 
+
 object HomeRepository {
 
-    private val db = FirebaseFirestore.getInstance()
+    private val db = FirebaseFirestoreManager.db
     private val partidosCollection = db.collection("partidos")
 
-    // ---------------------------------------------------------
-    // 1. ESCUCHAR PARTIDOS EN TIEMPO REAL
-    // ---------------------------------------------------------
+    // Escuchar todos los partidos en tiempo real
     fun escucharPartidos(): Flow<List<Partido>> = callbackFlow {
         val listener = partidosCollection
-            .orderBy("fecha")
-            .addSnapshotListener { snap, error ->
-                if (error != null || snap == null) {
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
+            .orderBy("fecha") // opcional, por fecha
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
 
-                val lista = snap.documents.mapNotNull { doc ->
-                    doc.toObject(Partido::class.java)?.copy(id = doc.id)
+                if (snapshot != null) {
+                    val lista = snapshot.documents.mapNotNull { doc ->
+                        doc.toPartido()
+                    }
+                    trySend(lista)
                 }
-
-                trySend(lista)
             }
 
         awaitClose { listener.remove() }
     }
 
+    private fun DocumentSnapshot.toPartido(): Partido? {
+        val partido = this.toObject(Partido::class.java) ?: return null
+        return partido.copy(id = this.id)
+    }
 
-    // ---------------------------------------------------------
-    // 2. CREAR PARTIDO (el creador es el primer jugador)
-    // ---------------------------------------------------------
+    // Crear partido
     suspend fun crearPartido(partido: Partido): Result<Unit> {
         return try {
-            val data = mapOf(
-                "creadorId" to partido.creadorId,
-                "ubicacion" to partido.ubicacion,
-                "nivel" to partido.nivel,
-                "fecha" to partido.fecha,
-                "jugadores" to partido.jugadores,
-                "maxJugadores" to partido.maxJugadores,
-                "estado" to "pendiente" // pendiente / completo / jugando / finalizado
-            )
-
-            partidosCollection.add(data).await()
+            val docRef = partidosCollection.add(partido).await()
+            docRef.update("id", docRef.id).await()
             Result.success(Unit)
-
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-
-    // ---------------------------------------------------------
-    // 3. OCUPAR HUECO EN PARTIDO
-    // slot = 0..3 → posición dentro de jugadores
-    // ---------------------------------------------------------
-    suspend fun ocuparHueco(partidoId: String, slot: Int, uid: String): Result<Unit> {
+    // Ocupar una posición concreta (0..3)
+    suspend fun ocuparPosicion(partidoId: String, posicionIndex: Int, uid: String): Result<Unit> {
         return try {
-            val ref = partidosCollection.document(partidoId)
-            val snap = ref.get().await()
+            val doc = partidosCollection.document(partidoId).get().await()
+            val partido = doc.toObject(Partido::class.java)
+                ?: return Result.failure(Exception("Partido no encontrado"))
 
-            val partido = snap.toObject(Partido::class.java)
-                ?: return Result.failure(Exception("Partido no existe"))
-
-            val jugadores = partido.jugadores.toMutableList()
-
-            // si ya está dentro, no hace falta meterlo
-            if (jugadores.contains(uid)) return Result.success(Unit)
-
-            // si el hueco está fuera de rango
-            if (slot < 0 || slot >= partido.maxJugadores)
-                return Result.failure(Exception("Slot fuera de rango"))
-
-            // si el slot ya está ocupado
-            if (jugadores.size > slot && jugadores[slot].isNotEmpty())
-                return Result.failure(Exception("Slot ocupado"))
-
-            // ampliar lista si fuese necesario
-            while (jugadores.size <= slot) {
-                jugadores.add("")
+            if (posicionIndex !in 0 until partido.maxJugadores) {
+                return Result.failure(Exception("Posición fuera de rango"))
             }
 
-            // meter al usuario
-            jugadores[slot] = uid
+            val actuales = partido.posiciones.toMutableList()
 
-            // filtrar huecos vacíos al final
-            val compactado = jugadores.filter { it.isNotEmpty() }
+            // si ya estás en alguna posición, no te volvemos a meter
+            if (actuales.contains(uid)) {
+                return Result.success(Unit)
+            }
 
-            ref.update("jugadores", compactado).await()
+            // si la posición ya está ocupada por otro
+            if (actuales[posicionIndex].isNotEmpty()) {
+                return Result.failure(Exception("Esa posición ya está ocupada"))
+            }
 
+            actuales[posicionIndex] = uid
+
+            doc.reference.update("posiciones", actuales).await()
             Result.success(Unit)
 
         } catch (e: Exception) {
@@ -107,25 +85,28 @@ object HomeRepository {
         }
     }
 
-
-    // ---------------------------------------------------------
-    // 4. SALIR DE UN HUECO
-    // ---------------------------------------------------------
-    suspend fun salirDeHueco(partidoId: String, uid: String): Result<Unit> {
+    // Salir del partido (vacía cualquier posición donde esté el uid)
+    suspend fun salirDePartido(partidoId: String, uid: String): Result<Unit> {
         return try {
-            val ref = partidosCollection.document(partidoId)
-            val snap = ref.get().await()
-
-            val partido = snap.toObject(Partido::class.java)
+            val doc = partidosCollection.document(partidoId).get().await()
+            val partido = doc.toObject(Partido::class.java)
                 ?: return Result.failure(Exception("Partido no encontrado"))
 
-            // No se puede salir si eres el creador
-            if (partido.creadorId == uid)
+            // el creador no puede salir
+            if (partido.creadorId == uid) {
                 return Result.failure(Exception("El creador no puede salir del partido"))
+            }
 
-            val nuevaLista = partido.jugadores.filter { it != uid }
+            val nuevas = partido.posiciones.map { posUid ->
+                if (posUid == uid) "" else posUid
+            }
 
-            ref.update("jugadores", nuevaLista).await()
+            // si no estaba en ninguna posición
+            if (!partido.posiciones.contains(uid)) {
+                return Result.failure(Exception("No estás en este partido"))
+            }
+
+            doc.reference.update("posiciones", nuevas).await()
             Result.success(Unit)
 
         } catch (e: Exception) {
@@ -133,22 +114,18 @@ object HomeRepository {
         }
     }
 
-
-    // ---------------------------------------------------------
-    // 5. BORRAR PARTIDO (solo creador)
-    // ---------------------------------------------------------
-    suspend fun borrarPartido(partidoId: String, uid: String): Result<Unit> {
+    // Borrar partido
+    suspend fun borrarPartido(partidoId: String, uidSolicitante: String): Result<Unit> {
         return try {
-            val ref = partidosCollection.document(partidoId)
-            val snap = ref.get().await()
-
-            val partido = snap.toObject(Partido::class.java)
+            val doc = partidosCollection.document(partidoId).get().await()
+            val partido = doc.toObject(Partido::class.java)
                 ?: return Result.failure(Exception("Partido no encontrado"))
 
-            if (partido.creadorId != uid)
-                return Result.failure(Exception("No puedes borrar un partido que no creaste"))
+            if (partido.creadorId != uidSolicitante) {
+                return Result.failure(Exception("Solo el creador puede eliminar el partido"))
+            }
 
-            ref.delete().await()
+            partidosCollection.document(partidoId).delete().await()
             Result.success(Unit)
 
         } catch (e: Exception) {

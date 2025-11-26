@@ -6,6 +6,6 @@ data class Partido(
     val ubicacion: String = "",
     val nivel: Double = 0.0,
     val fecha: com.google.firebase.Timestamp? = null,
-    val jugadores: List<String> = emptyList(),
+    val posiciones: List<String> = listOf("", "", "", ""),
     val maxJugadores: Int = 4
 )

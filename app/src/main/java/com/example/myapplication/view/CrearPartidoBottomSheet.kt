@@ -49,7 +49,7 @@ fun CrearPartidoBottomSheet(
 
     val calendar = remember { Calendar.getInstance() }
 
-    // DatePicker → cuando se selecciona date, se abre TimePicker automáticamente
+    // DatePicker -> cuando se selecciona date, se abre TimePicker automáticamente
     val datePickerDialog = remember {
         DatePickerDialog(
             context,

@@ -64,29 +64,25 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun HomeScreen(
     navController: NavHostController,
-    homeViewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    crearPartidoViewModel: CrearPartidoViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    homeViewModel: HomeViewModel = viewModel(),
+    crearPartidoViewModel: CrearPartidoViewModel = viewModel()
 ) {
     val partidos by homeViewModel.partidos.collectAsState()
-    val mensajeHome by homeViewModel.mensaje.collectAsState()
-
-    // Control del BottomSheet
-    var showSheet by remember { mutableStateOf(false) }
+    val mensaje by homeViewModel.mensaje.collectAsState()
+    val usuariosMapa by homeViewModel.usuarios.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Mostrar snackbar para mensajes de unirse/salir/borrar
-    LaunchedEffect(mensajeHome) {
-        if (mensajeHome != null) {
-            scope.launch {
-                snackbarHostState.showSnackbar(mensajeHome!!)
-            }
+    var showSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mensaje) {
+        if (mensaje != null) {
+            scope.launch { snackbarHostState.showSnackbar(mensaje!!) }
             homeViewModel.limpiarMensaje()
         }
     }
 
-    // Contenido con tu MainScaffold
     MainScaffold(
         navController = navController,
         snackbarHostState = snackbarHostState,
@@ -99,10 +95,9 @@ fun HomeScreen(
                 .padding(padding)
         ) {
 
-            // Lista de partidos
             if (partidos.isEmpty()) {
                 Box(
-                    Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("No hay partidos todavía")
@@ -115,18 +110,31 @@ fun HomeScreen(
                 ) {
                     items(partidos) { partido ->
 
-                        val jugadores = homeViewModel.obtenerJugadores(partido)
-                        val currentUid = homeViewModel.currentUid
+                        // Pedimos info de usuarios de cada posición
+                        partido.posiciones.filter { it.isNotBlank() }.forEach { uid ->
+                            LaunchedEffect(uid) {
+                                homeViewModel.solicitarUsuario(uid)
+                            }
+                        }
 
                         PartidoCard(
                             partido = partido,
-                            jugadores = jugadores,
-                            currentUid = currentUid,
-                            onOcuparHueco = { slot ->
-                                homeViewModel.ocuparHueco(partido.id, slot)
-                            },
-                            onSalirHueco = { slot ->
-                                homeViewModel.salirDeHueco(partido.id, slot)
+                            currentUid = homeViewModel.currentUid,
+                            usuariosMapa = usuariosMapa,
+                            onClickPosicion = { index ->
+                                val uidEnPos = partido.posiciones.getOrNull(index).orEmpty()
+
+                                when {
+                                    uidEnPos.isBlank() -> {
+                                        homeViewModel.ocuparPosicion(partido, index)
+                                    }
+                                    uidEnPos == homeViewModel.currentUid -> {
+                                        homeViewModel.salirDePartido(partido.id)
+                                    }
+                                    else -> {
+                                        homeViewModel.mostrarMensaje("Esa posición ya está ocupada")
+                                    }
+                                }
                             },
                             onBorrarPartido = {
                                 homeViewModel.borrarPartido(partido.id)
@@ -136,7 +144,6 @@ fun HomeScreen(
                 }
             }
 
-            // Bottom Sheet para crear partido
             if (showSheet) {
                 CrearPartidoBottomSheet(
                     viewModel = crearPartidoViewModel,
@@ -147,32 +154,31 @@ fun HomeScreen(
         }
     }
 }
+
 @Composable
 fun PartidoCard(
     partido: Partido,
-    jugadores: List<Usuario?>,
     currentUid: String,
-    onOcuparHueco: (Int) -> Unit,
-    onSalirHueco: (Int) -> Unit,
+    usuariosMapa: Map<String, Usuario>,
+    onClickPosicion: (Int) -> Unit,
     onBorrarPartido: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = colors.surface
         )
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            // ------------------------
-            //  CABECERA: ubicación + fecha + borrar si creador
-            // ------------------------
+            // Cabecera
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -180,10 +186,8 @@ fun PartidoCard(
                 Column {
                     Text(
                         partido.ubicacion,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.onSurface
+                        style = MaterialTheme.typography.titleMedium
                     )
-
                     partido.fecha?.toDate()?.let {
                         Text(
                             it.toString(),
@@ -196,74 +200,65 @@ fun PartidoCard(
                 if (partido.creadorId == currentUid) {
                     IconButton(onClick = onBorrarPartido) {
                         Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Borrar partido",
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar",
                             tint = colors.error
                         )
                     }
                 }
             }
 
-            // Estado del partido
-            if (partido.jugadores.size >= 4) {
+            // Estado sencillo
+            val completo = partido.posiciones.none { it.isBlank() }
+            if (completo) {
                 Text(
                     "PARTIDO COMPLETO",
-                    color = colors.primary,
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.primary
                 )
             }
 
-            // ------------------------
-            //  ZONA JUGADORES: 2 VS 2
-            // ------------------------
+            // Zona jugadores P1/P2 vs P3/P4
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
+
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    HuecoJugador(
-                        slot = 0,
-                        usuario = jugadores.getOrNull(0),
-                        currentUid = currentUid,
-                        onOcuparHueco = onOcuparHueco,
-                        onSalirHueco = onSalirHueco
+                    PosicionBox(
+                        index = 0,
+                        uid = partido.posiciones.getOrNull(0),
+                        usuario = usuariosMapa[partido.posiciones.getOrNull(0)],
+                        onClick = { onClickPosicion(0) }
                     )
-                    HuecoJugador(
-                        slot = 1,
-                        usuario = jugadores.getOrNull(1),
-                        currentUid = currentUid,
-                        onOcuparHueco = onOcuparHueco,
-                        onSalirHueco = onSalirHueco
+                    PosicionBox(
+                        index = 1,
+                        uid = partido.posiciones.getOrNull(1),
+                        usuario = usuariosMapa[partido.posiciones.getOrNull(1)],
+                        onClick = { onClickPosicion(1) }
                     )
                 }
 
-                // Etiqueta VS
-                Text(
-                    "VS",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colors.onSurface
-                )
+                Text("VS", style = MaterialTheme.typography.titleMedium)
 
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    HuecoJugador(
-                        slot = 2,
-                        usuario = jugadores.getOrNull(2),
-                        currentUid = currentUid,
-                        onOcuparHueco = onOcuparHueco,
-                        onSalirHueco = onSalirHueco
+                    PosicionBox(
+                        index = 2,
+                        uid = partido.posiciones.getOrNull(2),
+                        usuario = usuariosMapa[partido.posiciones.getOrNull(2)],
+                        onClick = { onClickPosicion(2) }
                     )
-                    HuecoJugador(
-                        slot = 3,
-                        usuario = jugadores.getOrNull(3),
-                        currentUid = currentUid,
-                        onOcuparHueco = onOcuparHueco,
-                        onSalirHueco = onSalirHueco
+                    PosicionBox(
+                        index = 3,
+                        uid = partido.posiciones.getOrNull(3),
+                        usuario = usuariosMapa[partido.posiciones.getOrNull(3)],
+                        onClick = { onClickPosicion(3) }
                     )
                 }
             }
@@ -271,70 +266,64 @@ fun PartidoCard(
     }
 }
 
-
-
 @Composable
-private fun HuecoJugador(
-    slot: Int,
+private fun PosicionBox(
+    index: Int,
+    uid: String?,
     usuario: Usuario?,
-    currentUid: String,
-    onOcuparHueco: (Int) -> Unit,
-    onSalirHueco: (Int) -> Unit
+    onClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
 
     Box(
         modifier = Modifier
-            .size(120.dp, 64.dp)
+            .size(width = 140.dp, height = 56.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(colors.surfaceVariant)
-            .clickable {
-                if (usuario == null) {
-                    onOcuparHueco(slot)
-                } else if (usuario.uid == currentUid) {
-                    onSalirHueco(slot)
-                }
-            }
-            .padding(8.dp),
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            // FOTO o icono
-            if (usuario?.fotoPerfilUrl?.isNotBlank() == true) {
-                AsyncImage(
-                    model = usuario.fotoPerfilUrl,
-                    contentDescription = "Foto perfil",
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(colors.primary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        tint = colors.onSurface
-                    )
-                }
-            }
-
-            // Nombre del usuario
+        if (uid.isNullOrBlank()) {
             Text(
-                text = usuario?.username ?: "Vacío",
-                color = colors.onSurface,
-                style = MaterialTheme.typography.bodyMedium
+                "Vacío",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurface.copy(alpha = 0.6f)
             )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (usuario?.fotoPerfilUrl?.isNotBlank() == true) {
+                    AsyncImage(
+                        model = usuario.fotoPerfilUrl,
+                        contentDescription = "Foto perfil",
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(colors.primary.copy(alpha = 0.25f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colors.onSurface.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+
+                Text(
+                    text = usuario?.username ?: "Jugador",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
