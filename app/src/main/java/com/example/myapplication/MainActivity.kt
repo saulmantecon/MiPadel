@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 CurrentUserManager.setUsuario(it)
                 mainState.value = MainState(
                     ready = true,
-                    startDestination = "profile"
+                    startDestination = "home"
                 )
             },
             onFailure = {
@@ -114,7 +114,7 @@ class MainActivity : ComponentActivity() {
             else -> isSystemInDarkTheme()
         }
 
-        // Mientras no esté listo → mostrar pantalla sólida (sin flash)
+        // Mientras no esté listo -> mostrar pantalla sólida (sin flash)
         if (!state.ready) {
             Box(
                 modifier = Modifier

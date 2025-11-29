@@ -17,7 +17,7 @@ fun NavigationWrapper(navHostController: NavHostController, startDestination: St
     NavHost(navController = navHostController, startDestination = startDestination, modifier = modifier){
         composable("login"){
             LoginScreen( onLoginClick = {
-                navHostController.navigate("profile")},
+                navHostController.navigate("home")},
                 onRegisterClick = {
                     navHostController.navigate("register")
                 }
@@ -26,7 +26,7 @@ fun NavigationWrapper(navHostController: NavHostController, startDestination: St
         composable("register"){
             RegisterScreen(
                 onRegisterClick = {
-                    navHostController.navigate("profile")
+                    navHostController.navigate("home")
                 },
                 onLoginClick = {
                     navHostController.navigate("login")

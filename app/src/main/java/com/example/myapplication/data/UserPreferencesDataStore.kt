@@ -17,7 +17,6 @@ class UserPreferencesDataStore(private val context: Context) {
         val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
     }
 
-    // ---------------- READ ---------------- //
 
     val keepLoggedIn: Flow<Boolean> = context.dataStore.data.map {
         it[KEY_KEEP_LOGGED_IN] ?: false
@@ -31,7 +30,6 @@ class UserPreferencesDataStore(private val context: Context) {
         it[KEY_THEME_MODE] ?: "system"
     }
 
-    // ---------------- WRITE ---------------- //
 
     suspend fun saveKeepLoggedIn(enabled: Boolean) {
         context.dataStore.edit {
@@ -57,15 +55,6 @@ class UserPreferencesDataStore(private val context: Context) {
             it.remove(KEY_KEEP_LOGGED_IN)
             it.remove(KEY_SAVED_UID)
         }
-    }
-
-    suspend fun toggleThemeMode(current: String) {
-        val newMode = when (current) {
-            "light" -> "dark"
-            "dark" -> "system"
-            else -> "light"
-        }
-        saveThemeMode(newMode)
     }
 
 }
