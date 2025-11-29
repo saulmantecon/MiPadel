@@ -81,10 +81,11 @@ fun CommunityScreen(
             // 1. SEARCH BAR
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    viewModel.buscarUsuarios(it)
-                },
+                onValueChange = { newValue ->
+                    searchQuery = newValue
+                    viewModel.buscarUsuarios(newValue)
+                }
+                ,
                 label = { Text("Buscar usuarios…") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -104,9 +105,6 @@ fun CommunityScreen(
                 resultadosBusqueda.forEach { usuario ->
                     UsuarioBusquedaItem(
                         usuario = usuario,
-                        onObtenerEstado = { callback ->
-                            viewModel.obtenerEstadoRelacion(usuario.uid, callback)
-                        },
                         onEnviarSolicitud = {
                             viewModel.enviarSolicitud(usuario.uid) { msg ->
                                 scope.launch { snackbar.showSnackbar(msg) }
@@ -175,18 +173,8 @@ fun CommunityScreen(
 @Composable
 fun UsuarioBusquedaItem(
     usuario: Usuario,
-    onObtenerEstado: ((String?) -> Unit) -> Unit,
     onEnviarSolicitud: () -> Unit
 ) {
-    var estado by remember { mutableStateOf<String?>(null) }
-
-    // Al entrar en pantalla, pedimos estado a Firestore
-    LaunchedEffect(usuario.uid) {
-        onObtenerEstado { nuevoEstado ->
-            estado = nuevoEstado // puede ser null, pendiente, aceptado...
-        }
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,43 +182,10 @@ fun UsuarioBusquedaItem(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Text(usuario.username)
 
-        when (estado) {
-
-            // 1. NO EXISTE RELACIÓN -> enviar solicitud
-            null -> {
-                Button(enabled = false, onClick = {}) { Text("Cargando...") }
-            }
-
-            // 2. YA ENVIADA -> botón disabled
-            "pendiente" -> {
-                Button(enabled = false, onClick = {}) {
-                    Text("Enviado")
-                }
-            }
-
-            // 3. YA AMIGOS
-            "aceptado" -> {
-                Button(enabled = false, onClick = {}) {
-                    Text("Ya es tu amigo")
-                }
-            }
-
-            // 4. RECICLABLES: rechazado o eliminado → enviar otra vez
-            "rechazado", "eliminado" -> {
-                Button(onClick = onEnviarSolicitud) {
-                    Text("Enviar solicitud")
-                }
-            }
-
-            // 5. fallback
-            else -> {
-                Button( onClick = {}) {
-                    Text("Enviar solicitud")
-                }
-            }
+        Button(onClick = onEnviarSolicitud) {
+            Text("Enviar solicitud")
         }
     }
 }

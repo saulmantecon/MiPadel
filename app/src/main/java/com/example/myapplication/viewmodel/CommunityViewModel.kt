@@ -10,13 +10,13 @@ import com.example.myapplication.model.Usuario
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
 class CommunityViewModel : ViewModel() {
 
     private val _amigos = MutableStateFlow<List<Usuario>>(emptyList())
     val amigos: StateFlow<List<Usuario>> get() = _amigos
 
-    private val _solicitudes: MutableStateFlow<List<Pair<Amistad, Usuario>>> = MutableStateFlow(emptyList())
+    private val _solicitudes =
+        MutableStateFlow<List<Pair<Amistad, Usuario>>>(emptyList())
     val solicitudes: StateFlow<List<Pair<Amistad, Usuario>>> get() = _solicitudes
 
     private val _busqueda = MutableStateFlow<List<Usuario>>(emptyList())
@@ -27,8 +27,10 @@ class CommunityViewModel : ViewModel() {
 
     private val currentUid = CurrentUserManager.getUsuario()?.uid ?: ""
 
+    //query que estaba activa cuando se pidió la última búsqueda
+    private var ultimaQuery: String = ""
 
-    // Cargar lista de amigos
+
     fun loadAmigos() {
         viewModelScope.launch {
             _loading.value = true
@@ -38,31 +40,30 @@ class CommunityViewModel : ViewModel() {
         }
     }
 
+
     private suspend fun obtenerUsuario(uid: String): Usuario? {
         val result = UsuarioRepository.obtenerUsuario(uid)
         return result.getOrNull()
     }
 
-
-    // Cargar solicitudes recibidas
     fun loadSolicitudes() {
         viewModelScope.launch {
             val result = CommunityRepository.obtenerSolicitudesRecibidas(currentUid)
             val lista = result.getOrDefault(emptyList())
 
-            // cargar usernames
             val enriched = lista.mapNotNull { amistad ->
                 val usuario = obtenerUsuario(amistad.enviadoPor)
-                if (usuario != null) Pair(amistad, usuario) else null
+                if (usuario != null) amistad to usuario else null
             }
 
             _solicitudes.value = enriched
         }
     }
 
-
-    // Buscar usuarios por nombre
+    // BÚSQUEDA DE USUARIOS
     fun buscarUsuarios(query: String) {
+        ultimaQuery = query
+
         viewModelScope.launch {
             if (query.isBlank()) {
                 _busqueda.value = emptyList()
@@ -72,13 +73,35 @@ class CommunityViewModel : ViewModel() {
             val result = UsuarioRepository.buscarUsuarios(query)
             val lista = result.getOrDefault(emptyList())
 
+            // Si el usuario cambió el texto antes de recibir respuesta -> ignorar
+            if (query != ultimaQuery) return@launch
+
             val yo = currentUid
 
-            _busqueda.value = lista.filter { it.uid != yo }
+            val filtrada = mutableListOf<Usuario>()
+
+            for (usuario in lista) {
+                if (usuario.uid != yo) {
+
+                    val estadoRes =
+                        CommunityRepository.obtenerEstadoRelacion(yo, usuario.uid)
+
+                    val estado = estadoRes.getOrNull()
+
+                    // mostramos solo usuarios con relación creadle
+                    if (estado == null || estado == "rechazado" || estado == "eliminado") {
+                        filtrada.add(usuario)
+                    }
+                }
+            }
+
+            if (query == ultimaQuery) {
+                _busqueda.value = filtrada
+            }
         }
     }
 
-    // Enviar solicitud
+    // SOLICITUDES
     fun enviarSolicitud(toUid: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
             val result = CommunityRepository.enviarSolicitud(currentUid, toUid)
@@ -89,10 +112,14 @@ class CommunityViewModel : ViewModel() {
                     onFailure = { it.message ?: "Error" }
                 )
             )
+
+            // volver a filtrar la búsqueda actual
+            if (ultimaQuery.isNotBlank()) {
+                buscarUsuarios(ultimaQuery)
+            }
         }
     }
 
-    // Aceptar solicitud
     fun aceptarSolicitud(amistad: Amistad) {
         viewModelScope.launch {
             CommunityRepository.aceptarSolicitud(amistad.docId, amistad.user1, amistad.user2)
@@ -101,7 +128,6 @@ class CommunityViewModel : ViewModel() {
         }
     }
 
-    // Rechazar solicitud
     fun rechazarSolicitud(amistad: Amistad) {
         viewModelScope.launch {
             CommunityRepository.rechazarSolicitud(amistad.docId)
@@ -111,26 +137,15 @@ class CommunityViewModel : ViewModel() {
 
     fun eliminarAmigo(uidAmigo: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val myUid = currentUid
-
-            val result = CommunityRepository.eliminarAmigo(myUid, uidAmigo)
+            val result = CommunityRepository.eliminarAmigo(currentUid, uidAmigo)
 
             if (result.isSuccess) {
                 onResult("Amigo eliminado")
-                loadAmigos() // actualizar lista
+                loadAmigos()
             } else {
                 onResult(result.exceptionOrNull()?.message ?: "Error al eliminar amigo")
             }
         }
     }
-
-    fun obtenerEstadoRelacion(uid: String, callback: (String?) -> Unit) {
-        viewModelScope.launch {
-            val result = CommunityRepository.obtenerEstadoRelacion(currentUid, uid)
-            callback(result.getOrNull()) // puede ser null, pendiente, aceptado, rechazado, eliminado
-        }
-    }
-
-
 }
 
