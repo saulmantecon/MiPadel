@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.viewmodel.CrearPartidoViewModel
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,21 +59,34 @@ fun CrearPartidoBottomSheet(
                 calendar.set(Calendar.MONTH, month)
                 calendar.set(Calendar.DAY_OF_MONTH, day)
 
-                // Ahora abrimos el time picker
                 TimePickerDialog(
                     context,
                     { _, hour, minute ->
-                        calendar.set(Calendar.HOUR_OF_DAY, hour)
-                        calendar.set(Calendar.MINUTE, minute)
 
+                        val cal = Calendar.getInstance() // <-- HORA LOCAL
+
+                        // Usamos el día/mes/año que se seleccionó antes
+                        cal.set(Calendar.YEAR, calendar.get(Calendar.YEAR))
+                        cal.set(Calendar.MONTH, calendar.get(Calendar.MONTH))
+                        cal.set(Calendar.DAY_OF_MONTH, calendar.get(Calendar.DAY_OF_MONTH))
+
+                        // Asignamos la hora seleccionada REAL
+                        cal.set(Calendar.HOUR_OF_DAY, hour)
+                        cal.set(Calendar.MINUTE, minute)
+                        cal.set(Calendar.SECOND, 0)
+                        cal.set(Calendar.MILLISECOND, 0)
+
+                        // Creamos timestamp exactamente con esa hora local
                         viewModel.setFecha(
-                            com.google.firebase.Timestamp(calendar.time)
+                            com.google.firebase.Timestamp(cal.time)
                         )
                     },
                     calendar.get(Calendar.HOUR_OF_DAY),
                     calendar.get(Calendar.MINUTE),
                     true
                 ).show()
+
+
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -119,14 +133,16 @@ fun CrearPartidoBottomSheet(
                 label = { Text("Ubicación") },
                 modifier = Modifier.fillMaxWidth()
             )
-
+            val formatter = remember {
+                java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+            }
             // Botón elegir fecha/hora
             Button(
                 onClick = { datePickerDialog.show() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = fecha?.toDate()?.toString() ?: "Elegir fecha y hora"
+                    text = fecha?.toDate()?.let { formatter.format(it) } ?: "Elegir fecha y hora"
                 )
             }
 

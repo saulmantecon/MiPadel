@@ -2,33 +2,30 @@ package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.Partido
-import com.google.firebase.Timestamp
+import com.example.myapplication.model.PartidoFinalizado
+import com.example.myapplication.model.SetResult
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-
-
-
-
 object HomeRepository {
 
     private val db = FirebaseFirestoreManager.db
     private val partidosCollection = db.collection("partidos")
+    private val usuariosCollection = db.collection("usuarios")
+    private val finalizadosCollection = db.collection("partidos_finalizados")
 
-    // Escuchar todos los partidos en tiempo real
+    // -------- ESCUCHAR PARTIDOS --------
     fun escucharPartidos(): Flow<List<Partido>> = callbackFlow {
         val listener = partidosCollection
-            .orderBy("fecha") // opcional, por fecha
+            .orderBy("fecha")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
 
                 if (snapshot != null) {
-                    val lista = snapshot.documents.mapNotNull { doc ->
-                        doc.toPartido()
-                    }
+                    val lista = snapshot.documents.mapNotNull { it.toPartido() }
                     trySend(lista)
                 }
             }
@@ -41,18 +38,18 @@ object HomeRepository {
         return partido.copy(id = this.id)
     }
 
-    // Crear partido
+    // -------- CREAR PARTIDO --------
     suspend fun crearPartido(partido: Partido): Result<Unit> {
         return try {
-            val docRef = partidosCollection.add(partido).await()
-            docRef.update("id", docRef.id).await()
+            val doc = partidosCollection.add(partido).await()
+            doc.update("id", doc.id).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Ocupar una posición concreta (0..3)
+    // -------- OCUPAR POSICIÓN --------
     suspend fun ocuparPosicion(partidoId: String, posicionIndex: Int, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
@@ -65,12 +62,7 @@ object HomeRepository {
 
             val actuales = partido.posiciones.toMutableList()
 
-            // si ya estás en alguna posición, no te volvemos a meter
-            if (actuales.contains(uid)) {
-                return Result.success(Unit)
-            }
-
-            // si la posición ya está ocupada por otro
+            if (actuales.contains(uid)) return Result.success(Unit)
             if (actuales[posicionIndex].isNotEmpty()) {
                 return Result.failure(Exception("Esa posición ya está ocupada"))
             }
@@ -85,26 +77,22 @@ object HomeRepository {
         }
     }
 
-    // Salir del partido (vacía cualquier posición donde esté el uid)
+    // -------- SALIR DEL PARTIDO --------
     suspend fun salirDePartido(partidoId: String, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
             val partido = doc.toObject(Partido::class.java)
                 ?: return Result.failure(Exception("Partido no encontrado"))
 
-            // el creador no puede salir
             if (partido.creadorId == uid) {
                 return Result.failure(Exception("El creador no puede salir del partido"))
             }
 
-            val nuevas = partido.posiciones.map { posUid ->
-                if (posUid == uid) "" else posUid
-            }
-
-            // si no estaba en ninguna posición
             if (!partido.posiciones.contains(uid)) {
                 return Result.failure(Exception("No estás en este partido"))
             }
+
+            val nuevas = partido.posiciones.map { if (it == uid) "" else it }
 
             doc.reference.update("posiciones", nuevas).await()
             Result.success(Unit)
@@ -114,14 +102,14 @@ object HomeRepository {
         }
     }
 
-    // Borrar partido
-    suspend fun borrarPartido(partidoId: String, uidSolicitante: String): Result<Unit> {
+    // -------- BORRAR PARTIDO MANUAL --------
+    suspend fun borrarPartido(partidoId: String, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
             val partido = doc.toObject(Partido::class.java)
                 ?: return Result.failure(Exception("Partido no encontrado"))
 
-            if (partido.creadorId != uidSolicitante) {
+            if (partido.creadorId != uid) {
                 return Result.failure(Exception("Solo el creador puede eliminar el partido"))
             }
 
@@ -132,4 +120,83 @@ object HomeRepository {
             Result.failure(e)
         }
     }
+
+    // -------- CANCELAR POR TIEMPO --------
+    suspend fun cancelarPorTiempo(partidoId: String): Result<Unit> {
+        return try {
+            partidosCollection.document(partidoId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // -------- ACTUALIZAR ESTADO --------
+    suspend fun actualizarEstado(partidoId: String, nuevoEstado: String): Result<Unit> {
+        return try {
+            partidosCollection.document(partidoId)
+                .update("estado", nuevoEstado)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // -------- FINALIZAR PARTIDO (TODO EN UNO) --------
+    suspend fun finalizarPartido(partidoId: String, sets: List<SetResult>): Result<Unit> {
+        return try {
+            val doc = partidosCollection.document(partidoId).get().await()
+            val partido = doc.toObject(Partido::class.java)
+                ?: return Result.failure(Exception("Partido no encontrado"))
+
+            val equipo1 = listOf(partido.posiciones[0], partido.posiciones[1])
+            val equipo2 = listOf(partido.posiciones[2], partido.posiciones[3])
+
+            // ---- 1) GUARDAR PARTIDO FINALIZADO ----
+            val finalizado = PartidoFinalizado(
+                id = partido.id,
+                fecha = partido.fecha,
+                ubicacion = partido.ubicacion,
+                posiciones = partido.posiciones,
+                sets = sets
+            )
+
+            PartidoFinalizadoRepository.guardar(finalizado)
+
+
+            // ---- 2) ACTUALIZAR ESTADÍSTICAS ----
+            val wins1 = sets.count { it.juegosEquipo1 > it.juegosEquipo2 }
+            val wins2 = sets.count { it.juegosEquipo1 < it.juegosEquipo2 }
+            val ganador_es_equipo1 = wins1 > wins2
+
+            val batch = db.batch()
+
+            (equipo1 + equipo2).forEach { uid ->
+                val ref = usuariosCollection.document(uid)
+                batch.update(ref, "partidosJugados", com.google.firebase.firestore.FieldValue.increment(1))
+
+                val esGanador =
+                    (ganador_es_equipo1 && uid in equipo1) ||
+                            (!ganador_es_equipo1 && uid in equipo2)
+
+                if (esGanador)
+                    batch.update(ref, "partidosGanados", com.google.firebase.firestore.FieldValue.increment(1))
+                else
+                    batch.update(ref, "partidosPerdidos", com.google.firebase.firestore.FieldValue.increment(1))
+            }
+
+            batch.commit().await()
+
+
+            // ---- 3) BORRAR PARTIDO DE LA COLECCIÓN PRINCIPAL ----
+            partidosCollection.document(partidoId).delete().await()
+
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 }

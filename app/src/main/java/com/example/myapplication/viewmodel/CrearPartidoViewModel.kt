@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-
 class CrearPartidoViewModel : ViewModel() {
 
     private val _ubicacion = MutableStateFlow("")
@@ -47,16 +46,16 @@ class CrearPartidoViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = true
 
-            val posiciones = listOf(uidCreador, "", "", "")
-
             val partido = Partido(
                 id = "",
                 creadorId = uidCreador,
                 ubicacion = ubic,
                 nivel = 0.0,
                 fecha = fechaPartido,
-                posiciones = posiciones,
-                maxJugadores = 4
+                posiciones = listOf(uidCreador, "", "", ""),
+                maxJugadores = 4,
+                estado = "pendiente",
+                sets = emptyList()
             )
 
             val result = HomeRepository.crearPartido(partido)
@@ -79,4 +78,3 @@ class CrearPartidoViewModel : ViewModel() {
         _fecha.value = null
     }
 }
-
