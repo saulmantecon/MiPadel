@@ -445,11 +445,18 @@ private fun ResultadoRow(
         OutlinedTextField(
             value = valueEq1,
             onValueChange = { if (it.length <= 2) onValueEq1Change(it) },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(48.dp),
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default,
             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
-            placeholder = { Text("0") }
+            placeholder = {
+                Text(
+                    "0",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
+
         )
 
         Text("-", modifier = Modifier.padding(horizontal = 4.dp))
@@ -457,11 +464,17 @@ private fun ResultadoRow(
         OutlinedTextField(
             value = valueEq2,
             onValueChange = { if (it.length <= 2) onValueEq2Change(it) },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).height(48.dp),
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default,
             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
-            placeholder = { Text("0") }
+            placeholder = {
+                Text(
+                    "0",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.example.myapplication.view
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -56,7 +58,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.myapplication.viewmodel.ProfileViewModel
 import java.io.File
-
+import android.Manifest
 @Composable
 fun ProfileScreen(
     navController: NavHostController,
@@ -73,15 +75,13 @@ fun ProfileScreen(
     var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
     var username by remember { mutableStateOf(usuario?.username ?: "") }
 
-    // URIs para la imagen (foto nueva o temporal de cámara)
+    // URIs para la imagen
     var fotoUri by remember { mutableStateOf<Uri?>(null) }
     var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // diálogo de cámara/galería
     var showDialog by remember { mutableStateOf(false) }
 
-    // Launchers para cámara y galería
-    // recibe un URI donde se guardará la foto
+    // Launcher para hacer foto
     val takePhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -90,7 +90,22 @@ fun ProfileScreen(
             hasEdited = true
         }
     }
-    // devuelve un URI del contenido seleccionado
+
+    // Launcher para pedir permiso de cámara
+    val requestCameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            // Ahora que tenemos permiso, creamos la URI y abrimos la cámara
+            tempPhotoUri = createImageUri(context)
+            takePhotoLauncher.launch(tempPhotoUri)
+        } else {
+            // Aquí podrías mostrar un snackbar si quieres
+            // "Necesitas permitir la cámara para hacer una foto"
+        }
+    }
+
+    // Launcher para galería
     val pickPhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -104,7 +119,6 @@ fun ProfileScreen(
         navController = navController,
         isEditing = editMode,
         onEditClick = {
-            // Cambia entre modo edición y confirmación
             if (editMode) hasEdited = true
             editMode = !editMode
         }
@@ -112,7 +126,9 @@ fun ProfileScreen(
 
         if (usuario == null) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = colors.primary)
@@ -136,7 +152,6 @@ fun ProfileScreen(
                     .size(140.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
-                //circulo con imagen o placeholder
                 Surface(
                     shape = CircleShape,
                     color = colors.surfaceVariant.copy(alpha = 0.3f),
@@ -144,7 +159,6 @@ fun ProfileScreen(
                     shadowElevation = 6.dp
                 ) {
                     if (fotoUri != null || usuario?.fotoPerfilUrl != null) {
-                        //imagen de perfil del usuario
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(fotoUri ?: usuario?.fotoPerfilUrl)
@@ -156,7 +170,6 @@ fun ProfileScreen(
                                 .clip(CircleShape)
                         )
                     } else {
-                        // Placeholder cuando no hay imagen
                         Box(
                             modifier = Modifier
                                 .size(140.dp)
@@ -174,7 +187,6 @@ fun ProfileScreen(
                     }
                 }
 
-                // Botón para cambiar imagen, solo aparece si esta editando
                 if (editMode) {
                     IconButton(
                         onClick = { showDialog = true },
@@ -215,7 +227,6 @@ fun ProfileScreen(
                 shape = RoundedCornerShape(50)
             )
 
-            // Efecto: guardar cambios al confirmar (tick)
             LaunchedEffect(editMode) {
                 if (!editMode && hasEdited) {
                     usuario?.let {
@@ -229,9 +240,10 @@ fun ProfileScreen(
                     }
                 }
             }
+
             if (!editMode) {
                 Button(
-                    onClick = {onVerEstadisticas()},
+                    onClick = { onVerEstadisticas() },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier
@@ -286,8 +298,18 @@ fun ProfileScreen(
                         Button(
                             onClick = {
                                 showDialog = false
-                                tempPhotoUri = createImageUri(context)
-                                takePhotoLauncher.launch(tempPhotoUri)
+
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.CAMERA
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (hasPermission) {
+                                    tempPhotoUri = createImageUri(context)
+                                    takePhotoLauncher.launch(tempPhotoUri)
+                                } else {
+                                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
                             },
                             shape = RoundedCornerShape(25.dp),
                             modifier = Modifier.fillMaxWidth(0.8f)
@@ -301,7 +323,6 @@ fun ProfileScreen(
                 confirmButton = {}
             )
         }
-
     }
 }
 

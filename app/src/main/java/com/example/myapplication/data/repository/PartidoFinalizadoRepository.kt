@@ -38,7 +38,7 @@ object PartidoFinalizadoRepository {
 
             val lista = snap.documents.mapNotNull { doc ->
                 doc.toObject(PartidoFinalizado::class.java)?.copy(id = doc.id)
-            }
+            }.sortedBy { it.fecha?.toDate()?.time ?: 0L }
             Log.d("REPO", "query size = ${snap.size()}")
 
             Result.success(lista)
