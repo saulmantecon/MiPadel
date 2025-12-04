@@ -68,4 +68,16 @@ class EstadisticasViewModel : ViewModel() {
             }
         }
     }
+    fun recargarUsuario(uid: String) {
+        viewModelScope.launch {
+            val res = UsuarioRepository.obtenerUsuario(uid)
+            res.getOrNull()?.let { nuevoUsuario ->
+
+                //ACTUALIZA EL USUARIO GLOBAL
+                CurrentUserManager.setUsuario(nuevoUsuario)
+            }
+        }
+    }
+
+
 }

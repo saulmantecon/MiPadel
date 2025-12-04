@@ -174,16 +174,16 @@ object HomeRepository {
 
             (equipo1 + equipo2).forEach { uid ->
                 val ref = usuariosCollection.document(uid)
-                batch.update(ref, "partidosJugados", com.google.firebase.firestore.FieldValue.increment(1))
+                batch.update(ref, "partidosJugados", FieldValue.increment(1))
 
                 val esGanador =
                     (ganador_es_equipo1 && uid in equipo1) ||
                             (!ganador_es_equipo1 && uid in equipo2)
 
                 if (esGanador)
-                    batch.update(ref, "partidosGanados", com.google.firebase.firestore.FieldValue.increment(1))
+                    batch.update(ref, "partidosGanados", FieldValue.increment(1))
                 else
-                    batch.update(ref, "partidosPerdidos", com.google.firebase.firestore.FieldValue.increment(1))
+                    batch.update(ref, "partidosPerdidos", FieldValue.increment(1))
             }
 
             batch.commit().await()

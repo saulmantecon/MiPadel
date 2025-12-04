@@ -50,11 +50,17 @@ fun EstadisticasScreen(
     val partidos by viewModel.partidos.collectAsState()
     val colors = MaterialTheme.colorScheme
 
-    //ESTA ES LA CLAVE
+
     LaunchedEffect(usuario) {
         val uid = usuario?.uid ?: return@LaunchedEffect
+
+        // 1) Recargar estadísticas del usuario desde Firestore
+        viewModel.recargarUsuario(uid)
+
+        // 2) Recargar los partidos finalizados
         viewModel.cargarPartidosFinalizados(uid)
     }
+
 
     MainScaffold(
         navController = navController,
