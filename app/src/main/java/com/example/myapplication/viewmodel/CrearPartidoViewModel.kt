@@ -6,7 +6,6 @@ import com.example.myapplication.data.repository.HomeRepository
 import com.example.myapplication.model.Partido
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -33,7 +32,6 @@ class CrearPartidoViewModel : ViewModel() {
     fun setFecha(timestamp: Timestamp) {
         _fecha.value = timestamp
     }
-
     fun crearPartido() {
         val ubic = _ubicacion.value.trim()
         val fechaPartido = _fecha.value
@@ -44,6 +42,27 @@ class CrearPartidoViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
+            // 1) No permitir fecha pasada
+            val ahora = java.util.Date()
+            if (fechaPartido.toDate().before(ahora)) {
+                _mensaje.value = "No puedes crear un partido de tiempo pasado"
+                return@launch
+            }
+
+            // 2) Comprobar solapamiento en la misma pista (± 1h30)
+            val conflictoRes = HomeRepository.existePartidoSolapado(ubic, fechaPartido)
+            val hayConflicto = conflictoRes.getOrElse { e ->
+                _mensaje.value = e.message ?: "Error al comprobar la disponibilidad"
+                return@launch
+            }
+
+            if (hayConflicto) {
+                _mensaje.value =
+                    "Ya hay un partido reservado en $ubic cerca de esa hora. Elige otra hora."
+                return@launch
+            }
+
+            // 3) Si está bien, creamos el partido
             _loading.value = true
 
             val partido = Partido(
@@ -68,6 +87,7 @@ class CrearPartidoViewModel : ViewModel() {
             _loading.value = false
         }
     }
+
 
     fun limpiarMensaje() {
         _mensaje.value = null

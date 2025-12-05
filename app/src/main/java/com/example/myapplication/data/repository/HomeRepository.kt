@@ -38,6 +38,34 @@ object HomeRepository {
         return partido.copy(id = this.id)
     }
 
+    // -------- COMPROBAR SI HAY PARTIDO SOLAPADO EN MISMA UBICACIÓN --------
+    suspend fun existePartidoSolapado(
+        ubicacion: String,
+        fecha: com.google.firebase.Timestamp
+    ): Result<Boolean> {
+        return try {
+            // 90 minutos en ms
+            val margenMs = 90L * 60L * 1000L
+
+            val hora = fecha.toDate().time
+            val inicio = java.util.Date(hora - margenMs)
+            val fin = java.util.Date(hora + margenMs)
+
+            val snap = partidosCollection
+                .whereEqualTo("ubicacion", ubicacion)
+                .whereGreaterThanOrEqualTo("fecha", inicio)
+                .whereLessThan("fecha", fin)
+                .get()
+                .await()
+
+            Result.success(!snap.isEmpty)
+
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
     // -------- CREAR PARTIDO --------
     suspend fun crearPartido(partido: Partido): Result<Unit> {
         return try {
@@ -143,7 +171,7 @@ object HomeRepository {
         }
     }
 
-    // -------- FINALIZAR PARTIDO (TODO EN UNO) --------
+    // -------- FINALIZAR PARTIDO --------
     suspend fun finalizarPartido(partidoId: String, sets: List<SetResult>): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()

@@ -33,7 +33,7 @@ class HomeViewModel : ViewModel() {
 
     init {
         escucharPartidos()
-        iniciarRelojEstados()   // <<--- NUEVO
+        iniciarRelojEstados()
     }
 
     /** Escucha Firestore y solo sincroniza la lista de partidos. */
@@ -135,8 +135,13 @@ class HomeViewModel : ViewModel() {
             )
         }
     }
-
     fun salirDePartido(partido: Partido) {
+        // Bloquear salir si el partido ya está en juego
+        if (partido.estado == "jugando") {
+            _mensaje.value = "No puedes salir de un partido que está en juego"
+            return
+        }
+
         viewModelScope.launch {
             val res = HomeRepository.salirDePartido(partido.id, currentUid)
             _mensaje.value = res.fold(
@@ -145,7 +150,6 @@ class HomeViewModel : ViewModel() {
             )
         }
     }
-
     fun borrarPartido(partidoId: String) {
         viewModelScope.launch {
             val res = HomeRepository.borrarPartido(partidoId, currentUid)
@@ -164,7 +168,8 @@ class HomeViewModel : ViewModel() {
         _mensaje.value = null
     }
 
-    // --- Validación de sets: lo dejo igual que lo tenías ---
+    //Validación de sets y finalización del partido
+
 
     fun finalizarPartido(partido: Partido, setsInput: List<Pair<String, String>>) {
         viewModelScope.launch {

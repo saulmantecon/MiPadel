@@ -271,7 +271,7 @@ fun PartidoCard(
                 }
             }
 
-            // SI EL PARTIDO ESTÁ FINALIZADO → mostramos resultado
+            // SI EL PARTIDO ESTÁ FINALIZADO: mostramos resultado
             if (partido.estado == "finalizado" && partido.sets.isNotEmpty()) {
                 val textoSets = partido.sets.joinToString("  ·  ") {
                     "${it.juegosEquipo1}-${it.juegosEquipo2}"
@@ -283,7 +283,7 @@ fun PartidoCard(
                 )
             }
 
-            // SI ESTÁ JUGANDO Y ES EL CREADOR → editor de resultado
+            // SI ESTÁ JUGANDO Y ES EL CREADOR: mostramos editor de resultado
             if (partido.estado == "jugando" && partido.creadorId == currentUid) {
                 Spacer(Modifier.height(8.dp))
                 Text(
