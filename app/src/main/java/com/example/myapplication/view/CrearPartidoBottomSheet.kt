@@ -15,38 +15,30 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.viewmodel.CrearPartidoViewModel
-import kotlinx.coroutines.launch
 import java.util.Calendar
-import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearPartidoBottomSheet(
     viewModel: CrearPartidoViewModel,
     onCerrar: () -> Unit,
-    snackbarHostState: SnackbarHostState
 ) {
     val colors = MaterialTheme.colorScheme
 
     val ubicacion by viewModel.ubicacion.collectAsState()
     val fecha by viewModel.fecha.collectAsState()
     val loading by viewModel.loading.collectAsState()
-    val mensaje by viewModel.mensaje.collectAsState()
 
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     val calendar = remember { Calendar.getInstance() }
 
@@ -63,20 +55,17 @@ fun CrearPartidoBottomSheet(
                     context,
                     { _, hour, minute ->
 
-                        val cal = Calendar.getInstance() // <-- HORA LOCAL
+                        val cal = Calendar.getInstance() // hora local seleccionada
 
-                        // Usamos el día/mes/año que se seleccionó antes
                         cal.set(Calendar.YEAR, calendar.get(Calendar.YEAR))
                         cal.set(Calendar.MONTH, calendar.get(Calendar.MONTH))
                         cal.set(Calendar.DAY_OF_MONTH, calendar.get(Calendar.DAY_OF_MONTH))
 
-                        // Asignamos la hora seleccionada REAL
                         cal.set(Calendar.HOUR_OF_DAY, hour)
                         cal.set(Calendar.MINUTE, minute)
                         cal.set(Calendar.SECOND, 0)
                         cal.set(Calendar.MILLISECOND, 0)
 
-                        // Creamos timestamp exactamente con esa hora local
                         viewModel.setFecha(
                             com.google.firebase.Timestamp(cal.time)
                         )
@@ -85,27 +74,11 @@ fun CrearPartidoBottomSheet(
                     calendar.get(Calendar.MINUTE),
                     true
                 ).show()
-
-
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
-    }
-
-    // Mostrar snackbar + cerrar si va bien
-    LaunchedEffect(mensaje) {
-        if (mensaje != null) {
-            scope.launch {
-                snackbarHostState.showSnackbar(mensaje!!)
-            }
-            if (mensaje == "Partido creado correctamente") {
-                viewModel.resetForm()
-                onCerrar()
-            }
-            viewModel.limpiarMensaje()
-        }
     }
 
     ModalBottomSheet(
@@ -133,9 +106,11 @@ fun CrearPartidoBottomSheet(
                 label = { Text("Ubicación") },
                 modifier = Modifier.fillMaxWidth()
             )
+
             val formatter = remember {
                 java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
             }
+
             // Botón elegir fecha/hora
             Button(
                 onClick = { datePickerDialog.show() },
@@ -164,7 +139,6 @@ fun CrearPartidoBottomSheet(
                     Text("Crear partido")
                 }
             }
-
             Spacer(modifier = Modifier.height(10.dp))
         }
     }

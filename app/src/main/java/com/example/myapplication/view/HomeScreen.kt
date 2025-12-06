@@ -31,7 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,38 +67,43 @@ fun HomeScreen(
     crearPartidoViewModel: CrearPartidoViewModel = viewModel()
 ) {
     val partidos by homeViewModel.partidos.collectAsState()
-    val mensaje by homeViewModel.mensaje.collectAsState()
     val usuariosMapa by homeViewModel.usuarios.collectAsState()
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     var showSheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(mensaje) {
-        if (mensaje != null) {
-            scope.launch { snackbarHostState.showSnackbar(mensaje!!) }
-            homeViewModel.limpiarMensaje()
-        }
-    }
+    val scope = rememberCoroutineScope()
 
     MainScaffold(
         navController = navController,
-        snackbarHostState = snackbarHostState,
+        sheetVisible = showSheet,
         onFabClick = { showSheet = true }
-    ) { padding, _ ->
+    ) { padding, snackbarHostState ->
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            val crearMensaje by crearPartidoViewModel.mensaje.collectAsState()
+
+            LaunchedEffect(crearMensaje) {
+                crearMensaje?.let { msg ->
+
+                    scope.launch {
+                        snackbarHostState.showSnackbar(msg)
+                    }
+
+                    if (msg == "Partido creado correctamente") {
+                        showSheet = false
+                        crearPartidoViewModel.resetForm()
+                    }
+
+                    crearPartidoViewModel.limpiarMensaje()
+                }
+            }
 
             if (partidos.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No hay partidos todavía")
                 }
             } else {
@@ -109,7 +114,6 @@ fun HomeScreen(
                 ) {
                     items(partidos) { partido ->
 
-                        // cargar info de usuarios presentes
                         partido.posiciones.filter { it.isNotBlank() }.forEach { uid ->
                             LaunchedEffect(uid) {
                                 homeViewModel.solicitarUsuario(uid)
@@ -121,27 +125,26 @@ fun HomeScreen(
                             currentUid = homeViewModel.currentUid,
                             usuariosMapa = usuariosMapa,
                             onClickPosicion = { index ->
-                                val uidEnPos = partido.posiciones.getOrNull(index).orEmpty()
-
-                                when {
-                                    uidEnPos.isBlank() -> {
-                                        homeViewModel.ocuparPosicion(partido, index)
+                                homeViewModel.ocuparPosicion(partido, index) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(it)
                                     }
 
-                                    uidEnPos == homeViewModel.currentUid -> {
-                                        homeViewModel.salirDePartido(partido)
-                                    }
-
-                                    else -> {
-                                        homeViewModel.mostrarMensaje("Esa posición ya está ocupada")
-                                    }
                                 }
                             },
                             onBorrarPartido = {
-                                homeViewModel.borrarPartido(partido.id)
+                                homeViewModel.borrarPartido(partido.id) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(it)
+                                    }
+                                }
                             },
-                            onFinalizarPartido = { setsInput ->
-                                homeViewModel.finalizarPartido(partido, setsInput)
+                            onFinalizarPartido = { sets ->
+                                homeViewModel.finalizarPartido(partido, sets) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(it)
+                                    }
+                                }
                             }
                         )
                     }
@@ -151,10 +154,10 @@ fun HomeScreen(
             if (showSheet) {
                 CrearPartidoBottomSheet(
                     viewModel = crearPartidoViewModel,
-                    onCerrar = { showSheet = false },
-                    snackbarHostState = snackbarHostState
+                    onCerrar = { showSheet = false }
                 )
             }
+
         }
     }
 }
@@ -429,7 +432,6 @@ private fun ResultadoRow(
     valueEq2: String,
     onValueEq2Change: (String) -> Unit
 ) {
-    val colors = MaterialTheme.colorScheme
 
     Row(
         modifier = Modifier.fillMaxWidth(),

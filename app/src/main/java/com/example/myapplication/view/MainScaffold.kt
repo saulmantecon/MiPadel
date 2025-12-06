@@ -1,6 +1,7 @@
 package com.example.myapplication.view
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -20,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -31,6 +33,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainScaffold(
     isEditing: Boolean = false,
+    sheetVisible: Boolean = false,
     onEditClick: () -> Unit = {},
     onFabClick: () -> Unit = {},
     navController: NavHostController,
@@ -78,7 +81,14 @@ fun MainScaffold(
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = colors.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = {
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(
+                        bottom = if (sheetVisible) 300.dp else 0.dp
+                    )
+                )
+            },
 
             topBar = {
                 AppTopBar(

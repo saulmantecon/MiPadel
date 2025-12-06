@@ -8,6 +8,7 @@ import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Date
 
 class CrearPartidoViewModel : ViewModel() {
 
@@ -32,6 +33,7 @@ class CrearPartidoViewModel : ViewModel() {
     fun setFecha(timestamp: Timestamp) {
         _fecha.value = timestamp
     }
+
     fun crearPartido() {
         val ubic = _ubicacion.value.trim()
         val fechaPartido = _fecha.value
@@ -42,27 +44,23 @@ class CrearPartidoViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            // 1) No permitir fecha pasada
-            val ahora = java.util.Date()
+            val ahora = Date()
             if (fechaPartido.toDate().before(ahora)) {
-                _mensaje.value = "No puedes crear un partido de tiempo pasado"
+                _mensaje.value = "No puedes crear un partido en el pasado"
                 return@launch
             }
 
-            // 2) Comprobar solapamiento en la misma pista (± 1h30)
-            val conflictoRes = HomeRepository.existePartidoSolapado(ubic, fechaPartido)
-            val hayConflicto = conflictoRes.getOrElse { e ->
-                _mensaje.value = e.message ?: "Error al comprobar la disponibilidad"
+            val conflicto = HomeRepository.existePartidoSolapado(ubic, fechaPartido)
+            val hay = conflicto.getOrElse {
+                _mensaje.value = "Error al comprobar disponibilidad"
                 return@launch
             }
 
-            if (hayConflicto) {
-                _mensaje.value =
-                    "Ya hay un partido reservado en $ubic cerca de esa hora. Elige otra hora."
+            if (hay) {
+                _mensaje.value = "Ya hay un partido cerca de esa hora"
                 return@launch
             }
 
-            // 3) Si está bien, creamos el partido
             _loading.value = true
 
             val partido = Partido(
@@ -88,10 +86,7 @@ class CrearPartidoViewModel : ViewModel() {
         }
     }
 
-
-    fun limpiarMensaje() {
-        _mensaje.value = null
-    }
+    fun limpiarMensaje() { _mensaje.value = null }
 
     fun resetForm() {
         _ubicacion.value = ""
