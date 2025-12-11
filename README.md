@@ -3,7 +3,9 @@ Su objetivo es facilitar la organización de partidos de pádel, permitiendo a l
 Este proyecto forma parte del Trabajo de Fin de Ciclo (DAM) e integra múltiples tecnologías modernas del ecosistema Android y Firebase.
 
 Descripción del Proyecto
+
 La aplicación permite:
+
 - Registro e inicio de sesión mediante Firebase Authentication.
 
 - Visualización de partidos activos y posibilidad de unirse a una posición libre.
@@ -21,6 +23,7 @@ La aplicación permite:
 El sistema usa Firebase Firestore como base de datos principal y ImgBB como almacenamiento externo de imágenes.
 
 Documentación del Proyecto
+
 Memoria del proyecto: (./docs/Mantecon_deCaso_Saul_Memoria_ProyectoFinal_DAM25.pdf)
 
 Manual del proyecto: (./docs/Mantecon_deCaso_Saul_Manual_ProyectoFinal_DAM25.pdf)
