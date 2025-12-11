@@ -29,5 +29,7 @@ Memoria del proyecto: (./docs/Mantecon_deCaso_Saul_Memoria_ProyectoFinal_DAM25.p
 Manual del proyecto: (./docs/Mantecon_deCaso_Saul_Manual_ProyectoFinal_DAM25.pdf)
 
 Autor
+
 Saúl Mantecón de Caso
+
 Desarrollo de Aplicaciones Multiplataforma – Proyecto Final 2025
