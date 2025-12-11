@@ -22,6 +22,7 @@ El sistema usa Firebase Firestore como base de datos principal y ImgBB como alma
 
 Documentación del Proyecto
 Memoria del proyecto: (./docs/Mantecon_deCaso_Saul_Memoria_ProyectoFinal_DAM25.pdf)
+
 Manual del proyecto: (./docs/Mantecon_deCaso_Saul_Manual_ProyectoFinal_DAM25.pdf)
 
 Autor
