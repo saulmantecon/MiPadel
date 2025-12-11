@@ -10,7 +10,7 @@
         <item name="windowSplashScreenAnimatedIcon">@drawable/logomipadelsinfondo</item>
 
         <!-- Duración mínima visible (opcional) -->
-        <item name="windowSplashScreenAnimationDuration">500</item>
+        <item name="windowSplashScreenAnimationDuration">600</item>
 
         <!-- Tema real al salir del splash -->
         <item name="postSplashScreenTheme">@style/Theme.MyApplication</item>

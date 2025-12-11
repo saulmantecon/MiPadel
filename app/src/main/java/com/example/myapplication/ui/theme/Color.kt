@@ -2,9 +2,8 @@ package com.example.myapplication.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ─────────────────────────────────────────
-// PALETA OSCURA
-// ─────────────────────────────────────────
+
+//Modo Oscuro
 val GreenDark = Color(0xFF0F3D1E)       // Fondo principal
 val GreenSurfaceDark = Color(0xFF1B5E20) // Tarjetas
 val GreenPrimaryDark = Color(0xFF4CAF50)
@@ -16,9 +15,7 @@ val TextOnDark = Color(0xFFE8F5E9)
 val TextOnDarkSoft = Color(0xFFB9E0C7)
 
 
-// ─────────────────────────────────────────
-// PALETA CLARA
-// ─────────────────────────────────────────
+//Modo Claro
 val GreenBackgroundLight = Color(0xFFE8F5E9)
 val GreenSurfaceLight = Color.White
 val GreenPrimaryLight = Color(0xFF43A047)

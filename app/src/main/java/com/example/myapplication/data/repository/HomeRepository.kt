@@ -15,9 +15,8 @@ object HomeRepository {
     private val db = FirebaseFirestoreManager.db
     private val partidosCollection = db.collection("partidos")
     private val usuariosCollection = db.collection("usuarios")
-    private val finalizadosCollection = db.collection("partidos_finalizados")
 
-    // -------- ESCUCHAR PARTIDOS --------
+
     fun escucharPartidos(): Flow<List<Partido>> = callbackFlow {
         val listener = partidosCollection
             .orderBy("fecha")
@@ -38,7 +37,7 @@ object HomeRepository {
         return partido.copy(id = this.id)
     }
 
-    // -------- COMPROBAR SI HAY PARTIDO SOLAPADO EN MISMA UBICACIÓN --------
+    //COMPROBAR SI HAY PARTIDO SOLAPADO EN MISMA UBICACIÓN
     suspend fun existePartidoSolapado(
         ubicacion: String,
         fecha: com.google.firebase.Timestamp
@@ -66,7 +65,7 @@ object HomeRepository {
     }
 
 
-    // -------- CREAR PARTIDO --------
+    //CREAR PARTIDO
     suspend fun crearPartido(partido: Partido): Result<Unit> {
         return try {
             val doc = partidosCollection.add(partido).await()
@@ -77,7 +76,7 @@ object HomeRepository {
         }
     }
 
-    // -------- OCUPAR POSICIÓN --------
+    //OCUPAR POSICIÓN
     suspend fun ocuparPosicion(partidoId: String, posicionIndex: Int, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
@@ -105,7 +104,7 @@ object HomeRepository {
         }
     }
 
-    // -------- SALIR DEL PARTIDO --------
+    //SALIR DEL PARTIDO
     suspend fun salirDePartido(partidoId: String, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
@@ -130,7 +129,7 @@ object HomeRepository {
         }
     }
 
-    // -------- BORRAR PARTIDO MANUAL --------
+    //BORRAR PARTIDO
     suspend fun borrarPartido(partidoId: String, uid: String): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
@@ -149,7 +148,7 @@ object HomeRepository {
         }
     }
 
-    // -------- CANCELAR POR TIEMPO --------
+    //CANCELAR PARTIDO POR TIEMPO
     suspend fun cancelarPorTiempo(partidoId: String): Result<Unit> {
         return try {
             partidosCollection.document(partidoId).delete().await()
@@ -159,7 +158,7 @@ object HomeRepository {
         }
     }
 
-    // -------- ACTUALIZAR ESTADO --------
+    //ACTUALIZAR ESTADO
     suspend fun actualizarEstado(partidoId: String, nuevoEstado: String): Result<Unit> {
         return try {
             partidosCollection.document(partidoId)
@@ -171,7 +170,7 @@ object HomeRepository {
         }
     }
 
-    // -------- FINALIZAR PARTIDO --------
+    //FINALIZAR PARTIDO
     suspend fun finalizarPartido(partidoId: String, sets: List<SetResult>): Result<Unit> {
         return try {
             val doc = partidosCollection.document(partidoId).get().await()
@@ -181,7 +180,7 @@ object HomeRepository {
             val equipo1 = listOf(partido.posiciones[0], partido.posiciones[1])
             val equipo2 = listOf(partido.posiciones[2], partido.posiciones[3])
 
-            // ---- 1) GUARDAR PARTIDO FINALIZADO ----
+            //1) GUARDAR PARTIDO FINALIZADO
             val finalizado = PartidoFinalizado(
                 id = partido.id,
                 fecha = partido.fecha,
@@ -193,10 +192,10 @@ object HomeRepository {
             PartidoFinalizadoRepository.guardar(finalizado)
 
 
-            // ---- 2) ACTUALIZAR ESTADÍSTICAS ----
+            //2) ACTUALIZAR ESTADÍSTICAS
             val wins1 = sets.count { it.juegosEquipo1 > it.juegosEquipo2 }
             val wins2 = sets.count { it.juegosEquipo1 < it.juegosEquipo2 }
-            val ganador_es_equipo1 = wins1 > wins2
+            val ganadorEsEquipo1 = wins1 > wins2
 
             val batch = db.batch()
 
@@ -205,8 +204,8 @@ object HomeRepository {
                 batch.update(ref, "partidosJugados", FieldValue.increment(1))
 
                 val esGanador =
-                    (ganador_es_equipo1 && uid in equipo1) ||
-                            (!ganador_es_equipo1 && uid in equipo2)
+                    (ganadorEsEquipo1 && uid in equipo1) ||
+                            (!ganadorEsEquipo1 && uid in equipo2)
 
                 if (esGanador)
                     batch.update(ref, "partidosGanados", FieldValue.increment(1))
@@ -217,7 +216,7 @@ object HomeRepository {
             batch.commit().await()
 
 
-            // ---- 3) BORRAR PARTIDO DE LA COLECCIÓN PRINCIPAL ----
+            //3) BORRAR PARTIDO DE LA COLECCIÓN PRINCIPAL
             partidosCollection.document(partidoId).delete().await()
 
             Result.success(Unit)

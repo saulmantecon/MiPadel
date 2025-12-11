@@ -1,5 +1,15 @@
 package com.example.myapplication.navigation
 
+/**
+ * Representa cada pantalla de la app junto a:
+ * - su ruta de navegación
+ * - su título
+ * - qué elementos del TopBar se muestran
+ * - si muestra FAB
+ *
+ * Esta clase permite centralizar toda la configuración visual
+ * de la navegación, haciendo que MainScaffold sea dinámico.
+ */
 sealed class Screen(
     val route: String,
     val title: String,
@@ -10,6 +20,7 @@ sealed class Screen(
     val showFab: Boolean = false,
     val showEdit: Boolean = false
 ) {
+
     object Home : Screen(
         route = "home",
         title = "Inicio",
@@ -20,9 +31,7 @@ sealed class Screen(
     object Community : Screen(
         route = "community",
         title = "Lista de amigos",
-        showMenu = true,
-        showAdd = false,
-        showSearch = false
+        showMenu = true
     )
 
     object Profile : Screen(
@@ -31,9 +40,10 @@ sealed class Screen(
         showMenu = true,
         showEdit = true
     )
-    object Estadisticas: Screen(
+
+    object Estadisticas : Screen(
         route = "estadisticas",
-        title = "Estadisticas",
+        title = "Estadísticas",
         showBack = true
     )
 }

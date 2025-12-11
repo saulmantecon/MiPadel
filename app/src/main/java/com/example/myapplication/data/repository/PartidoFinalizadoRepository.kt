@@ -1,8 +1,8 @@
 package com.example.myapplication.data.repository
 
-import android.util.Log
 import com.example.myapplication.data.FirebaseFirestoreManager
 import com.example.myapplication.model.PartidoFinalizado
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 
 object PartidoFinalizadoRepository {
@@ -10,7 +10,7 @@ object PartidoFinalizadoRepository {
     private val db = FirebaseFirestoreManager.db
     private val col = db.collection("partidos_finalizados")
 
-    // GUARDAR PARTIDO FINALIZADO
+    //GUARDAR PARTIDO FINALIZADO
     suspend fun guardar(partido: PartidoFinalizado): Result<Unit> {
         return try {
             val doc = col.document()   // ← ID NUEVO
@@ -28,18 +28,18 @@ object PartidoFinalizadoRepository {
     }
 
 
-    // OBTENER HISTORIAL DEL USUARIO
+    //OBTENER HISTORIAL DEL USUARIO
     suspend fun obtenerPartidosDeUsuario(uid: String): Result<List<PartidoFinalizado>> {
         return try {
             val snap = col
                 .whereArrayContains("posiciones", uid)
+                .orderBy("fecha", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
             val lista = snap.documents.mapNotNull { doc ->
                 doc.toObject(PartidoFinalizado::class.java)?.copy(id = doc.id)
-            }.sortedBy { it.fecha?.toDate()?.time ?: 0L }
-            Log.d("REPO", "query size = ${snap.size()}")
+            }
 
             Result.success(lista)
 
@@ -47,4 +47,5 @@ object PartidoFinalizadoRepository {
             Result.failure(e)
         }
     }
+
 }

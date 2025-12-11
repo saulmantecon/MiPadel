@@ -16,12 +16,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.myapplication.R
 
 data class BottomNavItem(val route: String, val label: String, val icon: Int)
+
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
+    //Items del menú inferior
     val items = listOf(
-        BottomNavItem("home", "Home", R.drawable.ic_home_padel),
-        BottomNavItem("community", "Community", R.drawable.ic_group),
-        BottomNavItem("profile", "Profile", R.drawable.ic_profile)
+        BottomNavItem("home", "Inicio", R.drawable.ic_home_padel),
+        BottomNavItem("community", "Comunidad", R.drawable.ic_group),
+        BottomNavItem("profile", "Perfil", R.drawable.ic_profile)
     )
 
     val colors = MaterialTheme.colorScheme
@@ -38,8 +40,11 @@ fun BottomNavigationBar(navController: NavHostController) {
                 onClick = {
                     if (currentRoute != item.route) {
                         navController.navigate(item.route) {
+                            // Limpia navegación entre pantallas principales
                             popUpTo("home") { inclusive = false }
-                            launchSingleTop = true // evita duplicados
+                            //evita que se creen múltiples copias de la misma pantalla
+                            // en la pila de navegación cuando navegas repetidamente a la misma ruta.
+                            launchSingleTop = true
                         }
                     }
                 },

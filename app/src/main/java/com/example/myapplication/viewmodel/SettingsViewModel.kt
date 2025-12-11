@@ -1,6 +1,5 @@
 package com.example.myapplication.viewmodel
 
-
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,16 +11,29 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/**
+ * ViewModel global para ajustes del usuario.
+ *
+ * Se encarga de:
+ * - Exponer el tema (claro/oscuro/sistema)
+ * - Gestionar sesión guardada
+ * - Guardar UID del usuario
+ * - Hacer logout limpiando DataStore y FirebaseAuth
+ *
+ * Este ViewModel se crea una vez en MainActivity y se mantiene
+ * durante toda la vida de la aplicación.
+ */
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = UserPreferencesDataStore(app)
 
-    //  Esperar a que DataStore cargue
+    // Indica si las preferencias ya se han leído al menos una vez
     val prefsLoaded = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
-            // Esperar primeros valores reales (por si los quieres para tema, etc.)
+            // Leer valores iniciales (solo para asegurarnos de que DataStore está listo)
             prefs.keepLoggedIn.first()
             prefs.savedUserUid.first()
             prefs.themeMode.first()
@@ -30,39 +42,23 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    //  STATEFLOWS PARA LA UI
+    // Exponer valores como StateFlow para la UI
+
     val themeMode = prefs.themeMode.stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
+        SharingStarted.WhileSubscribed(5_000),
         "system"
     )
 
     val keepLoggedIn = prefs.keepLoggedIn.stateIn(
         viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
+        SharingStarted.WhileSubscribed(5_000),
         false
     )
 
-    val savedUserUid = prefs.savedUserUid.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        null
-    )
-
-    //  LECTURAS DIRECTAS (para autologin)
-    suspend fun readKeepLoggedOnce(): Boolean {
-        return prefs.keepLoggedIn.first()
-    }
-
-    suspend fun readSavedUidOnce(): String? {
-        return prefs.savedUserUid.first()
-    }
-
-    //  SETTERS DE DATASTORE
+    // Setters de preferencias
     fun setTheme(mode: String) {
-        viewModelScope.launch {
-            prefs.saveThemeMode(mode)
-        }
+        viewModelScope.launch { prefs.saveThemeMode(mode) }
     }
 
     fun saveKeepLoggedIn(enabled: Boolean) {
@@ -73,7 +69,12 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { prefs.saveUserUid(uid) }
     }
 
-    // LOGOUT
+    /**
+     * Cierra sesión del usuario:
+     * - Limpia preferencias de sesión
+     * - Hace signOut en FirebaseAuth
+     * - Vacía usuario actual en memoria
+     */
     fun logout() {
         viewModelScope.launch {
             prefs.clearSession()

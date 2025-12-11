@@ -11,6 +11,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.style.TextOverflow
 
+/**
+ * Barra superior (TopAppBar) dinámica.
+ *
+ * Muestra:
+ * - Menú lateral (hamburger)
+ * - Botón atrás
+ * - Botón añadir
+ * - Botón buscar
+ * - Botón editar/guardar
+ *
+ * Su comportamiento depende de lo que defina cada pantalla (Screen).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
@@ -30,6 +42,8 @@ fun AppTopBar(
     val colors = MaterialTheme.colorScheme
 
     CenterAlignedTopAppBar(
+
+        // TÍTULO
         title = {
             Text(
                 text = title,
@@ -39,6 +53,8 @@ fun AppTopBar(
                 style = MaterialTheme.typography.titleMedium
             )
         },
+
+        // ICONO DE NAVEGACIÓN (menú o atrás)
         navigationIcon = {
             when {
                 showBack -> {
@@ -61,7 +77,10 @@ fun AppTopBar(
                 }
             }
         },
+
+        // ACCIONES (add, search, edit)
         actions = {
+
             if (showAdd) {
                 IconButton(onClick = onAddClick) {
                     Icon(
@@ -71,6 +90,7 @@ fun AppTopBar(
                     )
                 }
             }
+
             if (showSearch) {
                 IconButton(onClick = onSearchClick) {
                     Icon(
@@ -80,16 +100,18 @@ fun AppTopBar(
                     )
                 }
             }
+
             if (showEdit) {
                 IconButton(onClick = onEditClick) {
                     Icon(
                         imageVector = if (isEditing) Icons.Default.Done else Icons.Default.Edit,
                         contentDescription = if (isEditing) "Guardar" else "Editar",
-                        tint = if (isEditing) colors.inverseSurface else colors.onSurface // cambia color según modo
+                        tint = if (isEditing) colors.primary else colors.onSurface
                     )
                 }
             }
         },
+
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = colors.surface,
             titleContentColor = colors.onSurface

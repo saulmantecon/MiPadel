@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -48,19 +48,17 @@ fun EstadisticasScreen(
 ) {
     val usuario by viewModel.usuario.collectAsState()
     val partidos by viewModel.partidos.collectAsState()
+    val usuariosMapa by viewModel.usuariosMapa.collectAsState()
+
     val colors = MaterialTheme.colorScheme
 
-
-    LaunchedEffect(usuario) {
+    //Cuando cambia el usuario -> recargar datos
+    LaunchedEffect(usuario?.uid) {
         val uid = usuario?.uid ?: return@LaunchedEffect
 
-        // 1) Recargar estadísticas del usuario desde Firestore
         viewModel.recargarUsuario(uid)
-
-        // 2) Recargar los partidos finalizados
         viewModel.cargarPartidosFinalizados(uid)
     }
-
 
     MainScaffold(
         navController = navController,
@@ -75,6 +73,7 @@ fun EstadisticasScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
+            //Loading inicial
             if (usuario == null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -85,7 +84,7 @@ fun EstadisticasScreen(
                 return@MainScaffold
             }
 
-            // --- TARJETA DE ESTADÍSTICAS GENERALES ---
+            //TARJETA DE ESTADÍSTICAS DEL USUARIO
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
@@ -95,7 +94,10 @@ fun EstadisticasScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Estadísticas de ${usuario!!.username}", style = MaterialTheme.typography.titleMedium)
+
+                    Text("Estadísticas de ${usuario!!.username}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
 
                     Text("Partidos jugados: ${usuario!!.partidosJugados}")
                     Text("Victorias: ${usuario!!.partidosGanados}")
@@ -104,13 +106,13 @@ fun EstadisticasScreen(
                     val total = usuario!!.partidosJugados.takeIf { it > 0 } ?: 1
                     val winrate = (usuario!!.partidosGanados * 100) / total
 
-                    Text("Winrate: $winrate%")
+                    Text("% Victorias: $winrate%")
                 }
             }
 
-            HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
+            HorizontalDivider()
 
-            // --- HISTORIAL DE PARTIDOS ---
+            //HISTORIAL DE PARTIDOS DEL USUARIO
             Text("Historial de partidos", style = MaterialTheme.typography.titleMedium)
 
             LazyColumn(
@@ -120,7 +122,7 @@ fun EstadisticasScreen(
                 items(partidos) { partido ->
                     PartidoFinalizadoCard(
                         partido = partido,
-                        usuariosMapa = viewModel.usuariosMapa.collectAsState().value
+                        usuariosMapa = usuariosMapa
                     )
                 }
             }
@@ -132,14 +134,14 @@ fun EstadisticasScreen(
 @Composable
 fun PartidoFinalizadoCard(
     partido: PartidoFinalizado,
-    usuariosMapa: Map<String, Usuario> // <-- Para mostrar nombres/fotos igual que Home
+    usuariosMapa: Map<String, Usuario>
 ) {
     val colors = MaterialTheme.colorScheme
     val df = remember { SimpleDateFormat("EEE dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
+    // Determinar ganador
     val wins1 = partido.sets.count { it.juegosEquipo1 > it.juegosEquipo2 }
     val wins2 = partido.sets.count { it.juegosEquipo1 < it.juegosEquipo2 }
-
     val equipo1Gana = wins1 > wins2
 
     Card(
@@ -159,8 +161,11 @@ fun PartidoFinalizadoCard(
             Column {
                 Text(
                     partido.ubicacion,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+
                 partido.fecha?.toDate()?.let {
                     Text(
                         df.format(it),
@@ -170,14 +175,16 @@ fun PartidoFinalizadoCard(
                 }
             }
 
-            // EQUIPOS VISUAL AL ESTILO HOME
+            //EQUIPOS
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
 
                 // EQUIPO 1
                 Column(
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -191,10 +198,17 @@ fun PartidoFinalizadoCard(
                     )
                 }
 
-                Text("VS", style = MaterialTheme.typography.titleMedium)
+                // VS
+                Box(
+                    modifier = Modifier.weight(0.5f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("VS", style = MaterialTheme.typography.titleMedium)
+                }
 
                 // EQUIPO 2
                 Column(
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -209,7 +223,7 @@ fun PartidoFinalizadoCard(
                 }
             }
 
-            // RESULTADO FINAL
+            // RESULTADO
             if (partido.sets.isNotEmpty()) {
                 val textoSets = partido.sets.joinToString("  ·  ") {
                     "${it.juegosEquipo1}-${it.juegosEquipo2}"
@@ -224,6 +238,7 @@ fun PartidoFinalizadoCard(
         }
     }
 }
+
 
 
 @Composable
@@ -245,47 +260,54 @@ private fun PosicionBoxFinalizado(
         contentAlignment = Alignment.CenterStart
     ) {
 
+        //Caso de casilla vacía
         if (usuario == null) {
             Text(
                 "Vacío",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurface.copy(alpha = 0.6f)
             )
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            return
+        }
 
-                if (!usuario.fotoPerfilUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = usuario.fotoPerfilUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(colors.primary.copy(alpha = 0.25f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = colors.onSurface.copy(alpha = 0.8f)
-                        )
-                    }
-                }
+        //Caso de usuario ocupado
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
 
-                Text(
-                    usuario.username,
-                    style = MaterialTheme.typography.bodyMedium
+            // FOTO DEL JUGADOR (o icono por defecto)
+            if (!usuario.fotoPerfilUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = usuario.fotoPerfilUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(colors.primary.copy(alpha = 0.25f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = colors.onSurface.copy(alpha = 0.8f)
+                    )
+                }
             }
+
+            // NOMBRE DEL JUGADOR
+            Text(
+                usuario.username,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

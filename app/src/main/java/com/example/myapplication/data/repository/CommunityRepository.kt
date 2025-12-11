@@ -49,7 +49,7 @@ object CommunityRepository {
                     val nuevoUser1: String
                     val nuevoUser2: String
 
-                    // Si el que envía está en user2 → hay que invertir roles
+                    // Si el que envía está en user2 -> hay que invertir roles
                     if (fromUid == currentUser2) {
                         nuevoUser1 = fromUid
                         nuevoUser2 = currentUser1

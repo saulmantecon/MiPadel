@@ -1,6 +1,5 @@
 package com.example.myapplication.viewmodel
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.CurrentUserManager
@@ -12,21 +11,27 @@ import kotlinx.coroutines.launch
 
 class RegisterViewModel : ViewModel() {
 
-    // Estado observable por la UI (Compose)
+    // Estado observable de registro
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun registerUser(username:String, nombre: String, email: String, password: String) {
-        if (nombre.isBlank() || email.isBlank() || password.isBlank()) {
+    /**
+     * Registrar usuario:
+     * 1) Validación local
+     * 2) Llamada al repositorio
+     * 3) Guardar usuario en memoria global
+     */
+    fun registerUser(username: String, nombre: String, email: String, password: String) {
+
+        if (username.isBlank() || nombre.isBlank() || email.isBlank() || password.isBlank()) {
             _authState.value = AuthState.Error("Por favor, completa todos los campos")
             return
         }
 
         _authState.value = AuthState.Loading
 
-        // Llamamos al repositorio dentro de una corrutina
         viewModelScope.launch {
-            val resultado = UsuarioRepository.registrarUsuario(username,nombre, email, password)
+            val resultado = UsuarioRepository.registrarUsuario(username, nombre, email, password)
 
             resultado.fold(
                 onSuccess = { usuario ->

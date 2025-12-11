@@ -3,36 +3,14 @@ package com.example.myapplication.view
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,21 +28,40 @@ import com.example.myapplication.R
 import com.example.myapplication.model.AuthState
 import com.example.myapplication.viewmodel.RegisterViewModel
 
-
 @Composable
 fun RegisterScreen(
     onRegisterClick: () -> Unit = {},
     onLoginClick: () -> Unit = {}
 ) {
-    var nombre by remember { mutableStateOf("") }
+    // Campos del formulario
     var username by remember { mutableStateOf("") }
+    var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
     val viewModel: RegisterViewModel = viewModel()
     val authState by viewModel.authState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     val colors = MaterialTheme.colorScheme
+
+    // Reacción a cambios del estado de registro
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Error -> snackbarHostState.showSnackbar(
+                (authState as AuthState.Error).message
+            )
+
+            is AuthState.Success -> {
+                snackbarHostState.showSnackbar(
+                    (authState as AuthState.Success).message
+                )
+                onRegisterClick()
+            }
+
+            else -> Unit
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -72,47 +69,29 @@ fun RegisterScreen(
             .background(colors.background)
             .padding(24.dp)
     ) {
-        LaunchedEffect(authState) {
-            when (authState) {
-                is AuthState.Error -> {
-                    snackbarHostState.showSnackbar(
-                        message = (authState as AuthState.Error).message,
-                        withDismissAction = true
-                    )
-                }
 
-                is AuthState.Success -> {
-                    onRegisterClick()
-                    //Muestra el snackbar
-                    snackbarHostState.showSnackbar(
-                        message = (authState as AuthState.Success).message,
-                        withDismissAction = true
-                    )
-                    //Navega a Home
-                }
-
-                else -> Unit
-            }
-        }
-        //Overlay de carga
+        // Overlay de carga semitransparente
         if (authState is AuthState.Loading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.4f))
-                    .zIndex(2f), //lo pone encima de todo
+                    .zIndex(2f),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = Color.White)
             }
         }
-        // SnackbarHost — donde aparecerán los mensajes
+
+        // Snackbar
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
-                .align(Alignment.BottomCenter) // posición inferior
+                .align(Alignment.BottomCenter)
                 .padding(bottom = 16.dp)
         )
+
+        // Contenido principal
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -122,124 +101,101 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.Center
         ) {
 
-            // LOGO
+            // Logo redondo
             Image(
-                painter = painterResource(id = R.drawable.logomipadel),
+                painter = painterResource(id = R.drawable.logomipadelsinfondo),
                 contentDescription = "Logo MiPádel",
                 modifier = Modifier
                     .size(320.dp)
-                    .padding(bottom = 16.dp)
                     .clip(CircleShape)
+                    .padding(bottom = 16.dp)
             )
 
             Text(
-                text = "Registro",
+                "Registro",
                 color = colors.onBackground,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp
             )
-            Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(Modifier.height(16.dp))
 
             // USERNAME
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Nombre de usuario", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Nombre de usuario") },
                 singleLine = true,
                 shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // NOMBRE
+            // NOMBRE COMPLETO
             OutlinedTextField(
                 value = nombre,
                 onValueChange = { nombre = it },
-                label = { Text("Nombre y apellidos", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Nombre y apellidos") },
                 singleLine = true,
                 shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             // CORREO
             OutlinedTextField(
                 value = correo,
                 onValueChange = { correo = it },
-                label = { Text("Correo electrónico", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Correo electrónico") },
                 singleLine = true,
-                shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    keyboardType = KeyboardType.Email
                 ),
+                shape = RoundedCornerShape(25.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
             // CONTRASEÑA
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña", color = colors.onSurface.copy(alpha = 0.7f)) },
+                label = { Text("Contraseña") },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 shape = RoundedCornerShape(25.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedBorderColor = colors.primary,
-                    unfocusedBorderColor = Color.Transparent,
-                    cursorColor = colors.primary
-                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             // BOTÓN REGISTRARSE
             Button(
-                onClick = { viewModel.registerUser(username,nombre, correo, password) },
-                colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                shape = RoundedCornerShape(50),
+                onClick = {
+                    viewModel.registerUser(
+                        username = username.trim(),
+                        nombre = nombre.trim(),
+                        email = correo.trim(),
+                        password = password.trim()
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(50)
             ) {
-                Text(
-                    text = "Registrarse",
-                    color = colors.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Text("Registrarse", color = colors.onPrimary, fontSize = 16.sp)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // BOTÓN PARA VOLVER AL LOGIN
+            // Enlace al Login
             Text(
-                text = "¿Ya tienes cuenta? Inicia sesión",
+                "¿Ya tienes cuenta? Inicia sesión",
                 color = colors.onBackground,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,

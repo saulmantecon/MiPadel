@@ -8,5 +8,5 @@ data class Amistad(
     val user2: String = "",        // UID del usuario B
     val estado: String = "pendiente", // "pendiente", "aceptado", "rechazado"
     val enviadoPor: String = "",   // UID del que envió la solicitud
-    val timestamp: Timestamp? = null //fecha del envio de la solicitud
+    val timestamp: Timestamp? = null
 )

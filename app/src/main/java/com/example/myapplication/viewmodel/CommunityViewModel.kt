@@ -7,9 +7,12 @@ import com.example.myapplication.data.repository.CommunityRepository
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.Amistad
 import com.example.myapplication.model.Usuario
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
 class CommunityViewModel : ViewModel() {
 
     private val _amigos = MutableStateFlow<List<Usuario>>(emptyList())
@@ -27,9 +30,11 @@ class CommunityViewModel : ViewModel() {
 
     private val currentUid = CurrentUserManager.getUsuario()?.uid ?: ""
 
-    //query que estaba activa cuando se pidió la última búsqueda
+    // Query que estaba activa cuando se pidió la última búsqueda
     private var ultimaQuery: String = ""
 
+    // Job para hacer debounce de la búsqueda (retrasar ejecución)
+    private var searchJob: Job? = null
 
     fun loadAmigos() {
         viewModelScope.launch {
@@ -39,7 +44,6 @@ class CommunityViewModel : ViewModel() {
             _loading.value = false
         }
     }
-
 
     private suspend fun obtenerUsuario(uid: String): Usuario? {
         val result = UsuarioRepository.obtenerUsuario(uid)
@@ -64,7 +68,14 @@ class CommunityViewModel : ViewModel() {
     fun buscarUsuarios(query: String) {
         ultimaQuery = query
 
-        viewModelScope.launch {
+        // Cancelar búsqueda anterior, si la hubiera
+        searchJob?.cancel()
+
+        // Nueva búsqueda con pequeño retraso (debounce)
+        searchJob = viewModelScope.launch {
+            // Esperar un poco para evitar disparar una request por cada letra
+            delay(300L)
+
             if (query.isBlank()) {
                 _busqueda.value = emptyList()
                 return@launch
@@ -73,28 +84,27 @@ class CommunityViewModel : ViewModel() {
             val result = UsuarioRepository.buscarUsuarios(query)
             val lista = result.getOrDefault(emptyList())
 
-            // Si el usuario cambió el texto antes de recibir respuesta -> ignorar
+            // Si el usuario cambió el texto mientras tanto, ignoramos esta respuesta
             if (query != ultimaQuery) return@launch
 
             val yo = currentUid
-
             val filtrada = mutableListOf<Usuario>()
 
             for (usuario in lista) {
                 if (usuario.uid != yo) {
-
                     val estadoRes =
                         CommunityRepository.obtenerEstadoRelacion(yo, usuario.uid)
 
                     val estado = estadoRes.getOrNull()
 
-                    // mostramos solo usuarios con relación creadle
+                    // mostramos solo usuarios con relación "creable"
                     if (estado == null || estado == "rechazado" || estado == "eliminado") {
                         filtrada.add(usuario)
                     }
                 }
             }
 
+            // Confirmar que la query sigue siendo la actual
             if (query == ultimaQuery) {
                 _busqueda.value = filtrada
             }
@@ -148,4 +158,3 @@ class CommunityViewModel : ViewModel() {
         }
     }
 }
-

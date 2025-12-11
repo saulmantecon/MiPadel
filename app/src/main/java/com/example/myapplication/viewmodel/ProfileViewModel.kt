@@ -8,15 +8,20 @@ import com.example.myapplication.data.ImageUploader
 import com.example.myapplication.data.repository.UsuarioRepository
 import com.example.myapplication.model.Usuario
 
+/**
+ * ViewModel para gestionar la edición del perfil.
+ * - Sube la foto si existe
+ * - Actualiza el documento en Firestore
+ * - Refresca el usuario global en CurrentUserManager
+ */
 class ProfileViewModel : ViewModel() {
-    // Observa el usuario actual desde el CurrentUserManager
+
+    // Usuario global observable por toda la app
     val usuario = CurrentUserManager.usuario
 
     /**
-     * Actualiza los datos del usuario:
-     * - Si hay una nueva imagen, primero la sube a ImgBB.
-     * - Luego actualiza el documento en Firestore.
-     * - Finalmente actualiza el flujo global (StateFlow).
+     * Actualiza el usuario completo en Firestore.
+     * Si hay imagen nueva -> la sube primero.
      */
     suspend fun updateUsuarioCompleto(
         context: Context,
@@ -26,29 +31,32 @@ class ProfileViewModel : ViewModel() {
         return try {
             var usuarioActualizado = usuario
 
-            // Si el usuario ha elegido una nueva imagen, la subimos
+            // Subir imagen si el usuario escogió una nueva
             if (nuevaImagenUri != null) {
                 val nuevaUrl = ImageUploader.uploadImage(context, nuevaImagenUri)
-                if (nuevaUrl != null) {
-                    usuarioActualizado = usuarioActualizado.copy(fotoPerfilUrl = nuevaUrl)
-                } else {
+
+                if (nuevaUrl == null) {
                     return "Error al subir la imagen"
                 }
+
+                usuarioActualizado = usuarioActualizado.copy(fotoPerfilUrl = nuevaUrl)
             }
 
-            // Actualizamos Firestore
+            // Guardar cambios en Firestore
             val result = UsuarioRepository.updateUsuario(usuarioActualizado)
+
             result.fold(
                 onSuccess = {
+                    // También actualizar usuario global
                     CurrentUserManager.setUsuario(usuarioActualizado)
                     "Perfil actualizado correctamente"
                 },
                 onFailure = { e ->
-                    "Error al actualizar usuario: ${e.message ?: "desconocido"}"
+                    "Error al actualizar usuario: ${e.message}"
                 }
             )
         } catch (e: Exception) {
-            "Error al actualizar usuario: ${e.message ?: "desconocido"}"
+            "Error inesperado: ${e.message}"
         }
     }
 }

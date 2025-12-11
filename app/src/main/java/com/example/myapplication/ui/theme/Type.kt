@@ -14,17 +14,17 @@ val Typography = Typography(
     ),
 
     titleMedium = TextStyle(
-        fontSize = 20.sp,
+        fontSize = 22.sp,
         fontWeight = FontWeight.SemiBold
     ),
 
     bodyLarge = TextStyle(
-        fontSize = 16.sp,
+        fontSize = 17.sp,
         fontWeight = FontWeight.Medium
     ),
 
     bodyMedium = TextStyle(
-        fontSize = 14.sp,
+        fontSize = 15.sp,
         fontWeight = FontWeight.Normal
     ),
 

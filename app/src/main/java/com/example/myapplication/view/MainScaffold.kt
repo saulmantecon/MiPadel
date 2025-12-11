@@ -15,7 +15,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -42,16 +41,17 @@ fun MainScaffold(
     content: @Composable (PaddingValues, SnackbarHostState) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+
+    // Controla animación del TopBar al hacer scroll
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Obtenemos la ruta actual del NavController
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStackEntry?.destination?.route
+    // Ruta actual del NavController
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
-    // Seleccionamos la pantalla actual según la ruta
+    // Pantalla actual según la ruta
     val currentScreen = when (currentRoute) {
         Screen.Home.route -> Screen.Home
         Screen.Community.route -> Screen.Community
@@ -60,27 +60,32 @@ fun MainScaffold(
         else -> Screen.Home
     }
 
+    // DRAWER (menú lateral)
     ModalNavigationDrawer(
         drawerState = drawerState,
         scrimColor = Color.Black.copy(alpha = 0.35f),
-        gesturesEnabled = true,
         drawerContent = {
             DrawerContent(
-                onCloseDrawer = { scope.launch { drawerState.close() } },
                 onLogoutClick = {
                     scope.launch { drawerState.close() }
                     settingsViewModel.logout()
-                    navController.navigate("login") { popUpTo(0) }
+
+                    // Evita volver atrás a pantallas anteriores
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 settingsViewModel = settingsViewModel
             )
         }
-
     ) {
 
+        // CONTENEDOR PRINCIPAL
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = colors.background,
+
+            // SNACKBAR ELEVADO SI EL SHEET ESTÁ ABIERTO
             snackbarHost = {
                 SnackbarHost(
                     hostState = snackbarHostState,
@@ -90,6 +95,7 @@ fun MainScaffold(
                 )
             },
 
+            // TOP BAR
             topBar = {
                 AppTopBar(
                     title = currentScreen.title,
@@ -99,18 +105,18 @@ fun MainScaffold(
                     showSearch = currentScreen.showSearch,
                     showEdit = currentScreen.showEdit,
                     onMenuClick = { scope.launch { drawerState.open() } },
-                    onAddClick = { /* lo que quieras */ },
-                    onSearchClick = { /* lo que quieras */ },
+                    onBackClick = { navController.popBackStack() },
                     onEditClick = onEditClick,
-                    isEditing = isEditing,
-                    onBackClick = { navController.popBackStack() }
+                    isEditing = isEditing
                 )
             },
 
+            // BOTTOM NAV (solo si no quieres ocultarlo en ciertas pantallas)
             bottomBar = {
                 BottomNavigationBar(navController)
             },
 
+            // FAB dinámico según Screen
             floatingActionButton = {
                 if (currentScreen.showFab) {
                     FloatingActionButton(
@@ -127,3 +133,4 @@ fun MainScaffold(
         }
     }
 }
+

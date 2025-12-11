@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.viewmodel.CrearPartidoViewModel
 import java.util.Calendar
 
+/**
+ * BottomSheet que contiene el formulario de creación de un partido.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearPartidoBottomSheet(
@@ -34,38 +37,38 @@ fun CrearPartidoBottomSheet(
 ) {
     val colors = MaterialTheme.colorScheme
 
+    // Estados expuestos por el ViewModel
     val ubicacion by viewModel.ubicacion.collectAsState()
     val fecha by viewModel.fecha.collectAsState()
     val loading by viewModel.loading.collectAsState()
 
     val context = LocalContext.current
 
+    // Calendar usado para inicializar DatePicker
     val calendar = remember { Calendar.getInstance() }
 
-    // DatePicker -> cuando se selecciona date, se abre TimePicker automáticamente
+    /**
+     * DatePicker + TimePicker:
+     */
     val datePickerDialog = remember {
         DatePickerDialog(
             context,
             { _, year, month, day ->
+
+                // Guardamos día seleccionado temporalmente
                 calendar.set(Calendar.YEAR, year)
                 calendar.set(Calendar.MONTH, month)
                 calendar.set(Calendar.DAY_OF_MONTH, day)
 
+                // Tras seleccionar fecha -> se abre selector de hora
                 TimePickerDialog(
                     context,
                     { _, hour, minute ->
 
-                        val cal = Calendar.getInstance() // hora local seleccionada
+                        val cal = Calendar.getInstance()
+                        cal.set(year, month, day, hour, minute, 0)
 
-                        cal.set(Calendar.YEAR, calendar.get(Calendar.YEAR))
-                        cal.set(Calendar.MONTH, calendar.get(Calendar.MONTH))
-                        cal.set(Calendar.DAY_OF_MONTH, calendar.get(Calendar.DAY_OF_MONTH))
-
-                        cal.set(Calendar.HOUR_OF_DAY, hour)
-                        cal.set(Calendar.MINUTE, minute)
-                        cal.set(Calendar.SECOND, 0)
-                        cal.set(Calendar.MILLISECOND, 0)
-
+                        // Enviamos la fecha final al ViewModel
                         viewModel.setFecha(
                             com.google.firebase.Timestamp(cal.time)
                         )
@@ -86,6 +89,7 @@ fun CrearPartidoBottomSheet(
         containerColor = colors.surface,
         tonalElevation = 4.dp
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -99,10 +103,10 @@ fun CrearPartidoBottomSheet(
                 color = colors.onSurface
             )
 
-            // Campo ubicación
+            //ubicación
             OutlinedTextField(
                 value = ubicacion,
-                onValueChange = { viewModel.setUbicacion(it) },
+                onValueChange = viewModel::setUbicacion,
                 label = { Text("Ubicación") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -111,17 +115,18 @@ fun CrearPartidoBottomSheet(
                 java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
             }
 
-            // Botón elegir fecha/hora
+            //Botón para seleccionar fecha y hora
             Button(
                 onClick = { datePickerDialog.show() },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = fecha?.toDate()?.let { formatter.format(it) } ?: "Elegir fecha y hora"
+                    fecha?.toDate()?.let { formatter.format(it) }
+                        ?: "Elegir fecha y hora"
                 )
             }
 
-            // Botón crear partido
+            //Botón final para crear el partido
             Button(
                 onClick = { viewModel.crearPartido() },
                 enabled = !loading,
@@ -139,6 +144,7 @@ fun CrearPartidoBottomSheet(
                     Text("Crear partido")
                 }
             }
+
             Spacer(modifier = Modifier.height(10.dp))
         }
     }

@@ -28,18 +28,35 @@ object UsuarioRepository {
         password: String
     ): Result<Usuario> {
         return try {
-            // 1️. Crear usuario en Auth (email único)
-            val authResult = auth.createUserWithEmailAndPassword(email.trim(), password).await()
+            // Normalizamos datos de entrada
+            val usernameClean = username.trim()
+            val nombreClean = nombre.trim()
+            val emailClean = email.trim().lowercase()
+
+            //Comprobar si el nombre de usuario ya existe
+            val usernameQuery = usuariosCollection
+                .whereEqualTo("username", usernameClean)
+                .limit(1)
+                .get()
+                .await()
+
+            if (!usernameQuery.isEmpty) {
+                // Ya hay un usuario con ese username
+                return Result.failure(IllegalArgumentException("Ese nombre de usuario ya está en uso"))
+            }
+
+            //Crear usuario en Auth (email único)
+            val authResult = auth.createUserWithEmailAndPassword(emailClean, password).await()
 
             val uid = authResult.user?.uid
                 ?: return Result.failure(IllegalStateException("No se pudo obtener UID"))
 
-            // 2️. Crear documento del usuario en Firestore
+            //Crear documento del usuario en Firestore
             val usuario = Usuario(
                 uid = uid,
-                nombre = nombre.trim(),
-                email = email.trim().lowercase(),
-                username = username.trim(),
+                nombre = nombreClean,
+                email = emailClean,
+                username = usernameClean,
                 nivel = 1,
                 amigos = emptyList(),
                 partidosJugados = 0,
@@ -53,21 +70,23 @@ object UsuarioRepository {
             Result.success(usuario)
 
         } catch (_: FirebaseAuthUserCollisionException) {
+            //Email ya registrado en Firebase Auth
             Result.failure(IllegalArgumentException("Ese correo ya está registrado"))
 
         } catch (e: Exception) {
-            // rollback si Auth se creó pero Firestore falló
+            //rollback si Auth se creó pero Firestore falló
             try {
                 auth.currentUser?.delete()?.await()
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) { }
+
             Result.failure(e)
         }
     }
 
+
     suspend fun loginUsuario(email: String, password: String): Result<Usuario> {
         return try {
-            // 1️. Autenticamos con FirebaseAuth
+            //Autenticamos con FirebaseAuth
             val authResult = auth
                 .signInWithEmailAndPassword(email.trim(), password)
                 .await()
@@ -88,45 +107,86 @@ object UsuarioRepository {
      */
     suspend fun updateUsuario(usuario: Usuario): Result<Unit> {
         return try {
-            // Obtenemos el usuario actual en memoria
+            //Usuario actual en memoria (antes de editar)
             val usuarioActual = CurrentUserManager.getUsuario()
                 ?: return Result.failure(IllegalStateException("No hay usuario cargado en memoria"))
 
             val docRef = usuariosCollection.document(usuario.uid)
 
-            // Detectamos los campos modificados
+            //Normalizar  campos que pueden venir con espacios
+            val usernameNuevo = usuario.username.trim()
+            val nombreNuevo = usuario.nombre.trim()
+
+            //1) Si ha cambiado el username, comprobamos que no esté repetido
+            if (usuarioActual.username != usernameNuevo) {
+                val consulta = usuariosCollection
+                    .whereEqualTo("username", usernameNuevo)
+                    .limit(1)
+                    .get()
+                    .await()
+
+                if (!consulta.isEmpty) {
+                    val doc = consulta.documents.first()
+
+                    // Si el documento encontrado NO es el propio usuario => nombre ya usado
+                    if (doc.id != usuarioActual.uid) {
+                        return Result.failure(
+                            IllegalArgumentException("Ese nombre de usuario ya está en uso")
+                        )
+                    }
+                }
+            }
+
+            //2) Detectamos los campos modificados
             val camposModificados = mutableMapOf<String, Any>()
 
-            if (usuarioActual.username != usuario.username) camposModificados["username"] =
-                usuario.username
-            if (usuarioActual.nombre != usuario.nombre) camposModificados["nombre"] = usuario.nombre
-            if (usuarioActual.nivel != usuario.nivel) camposModificados["nivel"] = usuario.nivel
-            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl && usuario.fotoPerfilUrl != null) camposModificados["fotoPerfilUrl"] =
-                usuario.fotoPerfilUrl
-            if (usuarioActual.amigos != usuario.amigos) camposModificados["amigos"] = usuario.amigos
-            if (usuarioActual.partidosJugados != usuario.partidosJugados) camposModificados["partidosJugados"] =
-                usuario.partidosJugados
-            if (usuarioActual.partidosGanados != usuario.partidosGanados) camposModificados["partidosGanados"] =
-                usuario.partidosGanados
-            if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) camposModificados["partidosPerdidos"] =
-                usuario.partidosPerdidos
+            if (usuarioActual.username != usernameNuevo) {
+                camposModificados["username"] = usernameNuevo
+            }
+            if (usuarioActual.nombre != nombreNuevo) {
+                camposModificados["nombre"] = nombreNuevo
+            }
+            if (usuarioActual.nivel != usuario.nivel) {
+                camposModificados["nivel"] = usuario.nivel
+            }
+            if (usuarioActual.fotoPerfilUrl != usuario.fotoPerfilUrl && usuario.fotoPerfilUrl != null) {
+                camposModificados["fotoPerfilUrl"] = usuario.fotoPerfilUrl
+            }
+            if (usuarioActual.amigos != usuario.amigos) {
+                camposModificados["amigos"] = usuario.amigos
+            }
+            if (usuarioActual.partidosJugados != usuario.partidosJugados) {
+                camposModificados["partidosJugados"] = usuario.partidosJugados
+            }
+            if (usuarioActual.partidosGanados != usuario.partidosGanados) {
+                camposModificados["partidosGanados"] = usuario.partidosGanados
+            }
+            if (usuarioActual.partidosPerdidos != usuario.partidosPerdidos) {
+                camposModificados["partidosPerdidos"] = usuario.partidosPerdidos
+            }
 
-            // Si no hay cambios, devolvemos Result.success sin tocar Firestore
+            //3) Si no hay cambios, no tocamos Firestore
             if (camposModificados.isEmpty()) {
                 return Result.success(Unit)
             }
 
-            // Actualizamos solo los campos modificados en Firestore
+            //4) Actualizamos solo los campos modificados en Firestore
             docRef.update(camposModificados).await()
 
-            // Actualizamos el usuario en memoria
-            CurrentUserManager.setUsuario(usuario)
+            //5) Actualizamos el usuario en memoria con los datos limpios
+            val usuarioActualizado = usuario.copy(
+                username = usernameNuevo,
+                nombre = nombreNuevo
+            )
+            CurrentUserManager.setUsuario(usuarioActualizado)
 
             Result.success(Unit)
+
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+
 
 
     /**

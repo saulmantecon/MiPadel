@@ -15,7 +15,7 @@ object CurrentUserManager {
         _usuario.value = user
     }
 
-    // obtener usuario actual (una sola vez)
+    // obtener usuario actual
     fun getUsuario(): Usuario? = _usuario.value
 
     // limpiar al cerrar sesión
